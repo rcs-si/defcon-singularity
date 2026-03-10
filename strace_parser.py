@@ -78,7 +78,23 @@ def parse_strace_file(strace_path: Path) -> List[str]:
                 if any(path.startswith(p) for p in INTERESTING_PREFIXES):
                     other_paths.add(path)
 
-    return sorted(module_roots | other_paths)
+    # For project paths, drop bare directories when a more specific child path
+    # exists — e.g. drop /projectnb/foo if /projectnb/foo/test.py is present.
+    # This prevents accidentally copying the whole project directory into the
+    # container just because Python stat()'d it while loading a script.
+    pruned: Set[str] = set()
+    sorted_others = sorted(other_paths)
+    for path in sorted_others:
+        # Keep this path only if no other path starts with it + "/"
+        is_parent = any(
+            other.startswith(path + "/")
+            for other in sorted_others
+            if other != path
+        )
+        if not is_parent:
+            pruned.add(path)
+
+    return sorted(module_roots | pruned)
 
 
 def summarize_modules(strace_path: Path) -> List[str]:

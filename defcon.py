@@ -65,7 +65,6 @@ From: /projectnb/rcs-intern/brian/alma8_singularity/images/scc-alma8.simg
 
 %environment
 {env_section}
-    export PATH=/usr/local/bin:$PATH
 
 %runscript
     {run_command}
@@ -73,8 +72,31 @@ From: /projectnb/rcs-intern/brian/alma8_singularity/images/scc-alma8.simg
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+# Env vars that are session-specific and meaningless (or harmful) inside a container
+_ENV_BLOCKLIST = {
+    "PWD", "OLDPWD", "SHLVL", "_", "LS_COLORS",
+    # Terminal / SSH session
+    "SSH_CLIENT", "SSH_CONNECTION", "SSH_TTY", "SSH_AUTH_SOCK",
+    "TERM", "TERMINFO", "COLORTERM", "COLUMNS", "LINES",
+    "DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR", "XDG_SESSION_ID",
+    "HOSTNAME", "HISTCONTROL", "HISTSIZE", "HISTFILE",
+    "LESSOPEN", "LESSCLOSE", "MAIL", "LOGNAME",
+    "S_COLORS", "which_declare",
+    # Singularity sets these itself
+    "SINGULARITY_CACHEDIR", "SINGULARITY_BIND", "SINGULARITYENV_PREPEND_PATH",
+}
+
+def _is_blocked_env(key: str) -> bool:
+    if key in _ENV_BLOCKLIST:
+        return True
+    # Shell functions exported as env vars (bash exports them as BASH_FUNC_name%%)
+    if "%%" in key or key.startswith("BASH_FUNC_"):
+        return True
+    return False
+
+
 def load_env_vars(path: Path) -> dict:
-    """Parse an env -0 dump file into a dict."""
+    """Parse an env -0 dump file into a dict, filtering session noise."""
     env_vars = {}
     raw = path.read_bytes()
     for entry in raw.split(b"\x00"):
@@ -82,8 +104,7 @@ def load_env_vars(path: Path) -> dict:
             key, value = entry.split(b"=", 1)
             k = key.decode(errors="replace")
             v = value.decode(errors="replace")
-            # Filter shell session noise
-            if k not in ("PWD", "OLDPWD", "SHLVL", "_", "LS_COLORS"):
+            if not _is_blocked_env(k):
                 env_vars[k] = v
     return env_vars
 
@@ -139,7 +160,9 @@ def stage1(args):
     parsed = parse_qsub(script_text)
 
     scheduler = args.scheduler or parsed["scheduler"]
-    full_command = " ".join(parsed["module_loads"] + parsed["commands"])
+    # Build the runscript command: module loads first, then user commands, joined with &&
+    all_steps = parsed["module_loads"] + parsed["commands"]
+    full_command = " && ".join(all_steps)
 
     # Paths for the strace job's output files (use $TMPDIR if available on cluster)
     trace_file = "$TMPDIR/defcon_trace.out"
@@ -236,8 +259,20 @@ def stage2(args):
 
     # Build .def sections
     files_section = "\n".join(f"    {p}" for p in files) if files else "    # (no shared module paths detected)"
-    env_section   = "\n".join(f"    export {k}={_shell_quote(v)}" for k, v in sorted(env_vars.items()))
-    run_command   = args.command or "bash"
+
+    # Fix up PATH: prepend /usr/local/bin to whatever PATH was in the env dump
+    # so we don't emit two separate PATH exports that clobber each other.
+    if "PATH" in env_vars:
+        existing_path = env_vars["PATH"]
+        if "/usr/local/bin" not in existing_path.split(":"):
+            env_vars["PATH"] = "/usr/local/bin:" + existing_path
+    else:
+        env_vars["PATH"] = "/usr/local/bin:/usr/bin:/bin"
+
+    env_section = "\n".join(
+        f"    export {k}={_shell_quote(v)}" for k, v in sorted(env_vars.items())
+    )
+    run_command = args.command or "bash"
 
     def_content = DEF_TEMPLATE.format(
         files_section=files_section,
