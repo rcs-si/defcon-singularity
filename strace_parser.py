@@ -69,7 +69,8 @@ def parse_blocked_module_libs(strace_path: Path) -> List[str]:
                     continue
                 # Only capture actual .so files, not directories or other files
                 if re.search(r'\.so(\.\d+)*$', path):
-                    libs.add(path)
+                    # Normalise double slashes introduced by strace
+                    libs.add(re.sub(r'//+', '/', path))
     return sorted(libs)
 
 
