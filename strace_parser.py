@@ -2,87 +2,107 @@ from pathlib import Path
 import re
 from typing import List, Set
 
+# Paths that are never interesting (noise)
 IGNORE_PREFIXES = (
     "/proc",
     "/dev",
     "/sys",
     "/tmp",
     "/run",
-    "/user",  # Ignore user-specific temporary files
 )
 
-# Paths we want to capture for the container
+# Paths we want to capture for non-module files (only on success)
 INTERESTING_PREFIXES = (
-    "/share/pkg",  # Wildcard match for /share/pkg.* (e.g., /share/pkg.8, /share/pkg.9)
     "/project",
-    "/projectnb",  # Project NB systems
+    "/projectnb",
     "/usr/local",
-    # add /usr2/youruser if we want it
 )
 
-PATH_RE = re.compile(r'"([^"]+)"')
+PATH_RE = re.compile(r'"(/[^"]+)"')
 
-# Match /share/pkg.*/PACKAGE/VERSION/install[/anything...] or /share/pkg.{wildcard}/...
-INSTALL_ROOT_RE = re.compile(r"^(/share/pkg\.[^/]+/[^/]+/[^/]+/install)(?:/.*)?$")
+# Collapse /share/pkg.X/PACKAGE/VERSION/install[/...] → install root
+MODULE_INSTALL_RE = re.compile(
+    r'^(/share/pkg\.[^/]+/[^/]+/[^/]+/install)(?:/.*)?$'
+)
 
-# Common error codes to skip in strace output
+# Error patterns — used only when filtering non-module paths
 ERROR_PATTERNS = (
-    " = -1 ",  # General error
-    "ENOENT",  # No such file or directory
-    "EACCES",  # Permission denied
-    "ENOTDIR",  # Not a directory
-    "EISDIR",   # Is a directory
+    " = -1 ",
+    "ENOENT",
+    "EACCES",
+    "ENOTDIR",
+    "EISDIR",
 )
-
-def looks_interesting(path: str) -> bool:
-    for p in IGNORE_PREFIXES:
-        if path.startswith(p):
-            return False
-    return any(path.startswith(p) for p in INTERESTING_PREFIXES) or path.startswith("/project")
 
 
 def parse_strace_file(strace_path: Path) -> List[str]:
-    raw_paths: Set[str] = set()
+    """
+    Parse strace output and return a sorted list of paths to include in the
+    Singularity %files section.
+
+    Strategy:
+    - /share/pkg.*  modules: extract install root from EVERY line, including
+      failed probes (ENOENT etc.).  The kernel probes many hwcap variants before
+      finding the right lib; those probe failures still prove the module is used.
+    - All other interesting paths: only keep successfully accessed paths
+      (skip lines containing error codes).
+    """
+    module_roots: Set[str] = set()
+    other_paths: Set[str] = set()
 
     with strace_path.open(errors="ignore") as f:
         for line in f:
-            # Skip failed syscalls - check for any error pattern
-            if any(error in line for error in ERROR_PATTERNS):
-                continue
+            paths_in_line = PATH_RE.findall(line)
+            is_error_line = any(err in line for err in ERROR_PATTERNS)
 
-            m = PATH_RE.search(line)
-            if not m:
-                continue
+            for path in paths_in_line:
+                # --- /share/pkg module paths ---
+                m = MODULE_INSTALL_RE.match(path)
+                if m:
+                    # Always capture, even from failed probes
+                    module_roots.add(m.group(1))
+                    continue
 
-            path = m.group(1)
-            if not path.startswith("/"):
-                continue
+                # Skip /share/pkg sub-paths that didn't match the install regex
+                # (e.g. bare "/share/pkg.8" directory entries — not useful)
+                if path.startswith("/share/pkg"):
+                    continue
 
-            if looks_interesting(path):
-                raw_paths.add(path)
+                # --- Other interesting paths (only on success) ---
+                if is_error_line:
+                    continue
 
-    module_install_roots: Set[str] = set()
-    other_paths: Set[str] = set()
+                if any(path.startswith(p) for p in IGNORE_PREFIXES):
+                    continue
 
-    for p in raw_paths:
-        m = INSTALL_ROOT_RE.match(p)
-        if m:
-            # Collapse ANY file under .../install/... to just .../install
-            module_install_roots.add(m.group(1))
-        else:
-            # Keep non /share/pkg stuff (e.g., /projectnb, /usr/local)
-            if not p.startswith("/share/pkg"):
-                other_paths.add(p)
+                if any(path.startswith(p) for p in INTERESTING_PREFIXES):
+                    other_paths.add(path)
 
-    # Final list = all distinct module install roots + other non-module paths
-    final_paths = sorted(module_install_roots | other_paths)
-    return final_paths
+    return sorted(module_roots | other_paths)
+
+
+def summarize_modules(strace_path: Path) -> List[str]:
+    """Return human-readable module names detected (e.g. 'python3/3.12.4')."""
+    names: Set[str] = set()
+    with strace_path.open(errors="ignore") as f:
+        for line in f:
+            for path in PATH_RE.findall(line):
+                m = MODULE_INSTALL_RE.match(path)
+                if m:
+                    # /share/pkg.8/python3/3.12.4/install → python3/3.12.4
+                    parts = Path(m.group(1)).parts
+                    # parts: ('/', 'share', 'pkg.8', 'python3', '3.12.4', 'install')
+                    if len(parts) >= 6:
+                        names.add(f"{parts[3]}/{parts[4]}")
+    return sorted(names)
 
 
 if __name__ == "__main__":
     import sys
-    try:
-        for p in parse_strace_file(Path(sys.argv[1])):
-            print(p)
-    except BrokenPipeError:
-        pass
+    path = Path(sys.argv[1])
+    print("=== Module install roots ===")
+    for p in parse_strace_file(path):
+        print(p)
+    print("\n=== Detected modules ===")
+    for name in summarize_modules(path):
+        print(f"  module load {name}")
