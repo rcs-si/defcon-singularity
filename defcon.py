@@ -260,20 +260,43 @@ def stage2(args):
     # Build .def sections
     files_section = "\n".join(f"    {p}" for p in files) if files else "    # (no shared module paths detected)"
 
-    # Fix up PATH: prepend /usr/local/bin to whatever PATH was in the env dump
-    # so we don't emit two separate PATH exports that clobber each other.
-    if "PATH" in env_vars:
-        existing_path = env_vars["PATH"]
-        if "/usr/local/bin" not in existing_path.split(":"):
-            env_vars["PATH"] = "/usr/local/bin:" + existing_path
-    else:
-        env_vars["PATH"] = "/usr/local/bin:/usr/bin:/bin"
+    # Derive bin/ and lib64/ paths from each module install root and prepend
+    # them to PATH / LD_LIBRARY_PATH so 'module load' is NOT needed at runtime.
+    module_bins = []
+    module_libs = []
+    for f in files:
+        fp = Path(f)
+        if not f.startswith("/share/pkg"):
+            continue
+        module_bins.append(str(fp / "bin"))
+        module_libs.append(str(fp / "lib64"))
+        module_libs.append(str(fp / "lib"))
+
+    # PATH: module bins first, then /usr/local/bin, then the rest from env
+    existing_path = env_vars.get("PATH", "/usr/bin:/bin")
+    base_path_parts = [p for p in existing_path.split(":") if p not in module_bins]
+    env_vars["PATH"] = ":".join(module_bins + ["/usr/local/bin"] + base_path_parts)
+
+    # LD_LIBRARY_PATH: module lib dirs prepended
+    existing_ldpath = env_vars.get("LD_LIBRARY_PATH", "")
+    base_ld_parts = [p for p in existing_ldpath.split(":") if p and p not in module_libs]
+    env_vars["LD_LIBRARY_PATH"] = ":".join(module_libs + base_ld_parts)
 
     env_section = "\n".join(
         f"    export {k}={_shell_quote(v)}" for k, v in sorted(env_vars.items())
     )
-    run_command = args.command or "bash"
 
+    # Strip 'module load ...' from runscript — handled by PATH now
+    raw_command = args.command or "bash"
+    run_steps = [
+        step.strip()
+        for step in re.split(r"\s*&&\s*", raw_command)
+        if not re.match(r"^module\s+", step.strip())
+    ]
+    run_command = " && ".join(run_steps) if run_steps else "bash"
+
+    if raw_command != run_command:
+        print("  Stripped 'module load' from runscript (modules are on PATH).")
     def_content = DEF_TEMPLATE.format(
         files_section=files_section,
         env_section=env_section,
