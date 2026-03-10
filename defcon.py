@@ -59,6 +59,10 @@ From: /projectnb/rcs-intern/brian/alma8_singularity/images/scc-alma8.simg
 %files
 {files_section}
 
+%setup
+    # rsync -rL dereferences cyclic symlinks that break %%files cp -r
+{rsync_section}
+
 %post
     yum -y update
     yum -y install python3 python3-pip
@@ -258,7 +262,23 @@ def stage2(args):
     env_vars = load_env_vars(env_path)
 
     # Build .def sections
-    files_section = "\n".join(f"    {p}" for p in files) if files else "    # (no shared module paths detected)"
+    # Project files → %files (Singularity handles these with a simple bind copy)
+    # Module install roots → %post rsync -rL (dereferences cyclic symlinks that
+    # break Singularity's internal cp -r used by %files)
+    project_files = [f for f in files if not f.startswith("/share/pkg")]
+    module_roots  = [f for f in files if f.startswith("/share/pkg")]
+
+    files_section = (
+        "\n".join(f"    {p}" for p in project_files)
+        if project_files else "    # (no project files detected)"
+    )
+
+    rsync_lines = []
+    for root in module_roots:
+        container_dest = f"${{SINGULARITY_ROOTFS}}{root}"
+        rsync_lines.append(f"    mkdir -p {container_dest}")
+        rsync_lines.append(f"    rsync -rL {root}/ {container_dest}/")
+    rsync_section = "\n".join(rsync_lines)
 
     # Derive bin/ and lib64/ paths from each module install root and prepend
     # them to PATH / LD_LIBRARY_PATH so 'module load' is NOT needed at runtime.
@@ -299,6 +319,7 @@ def stage2(args):
         print("  Stripped 'module load' from runscript (modules are on PATH).")
     def_content = DEF_TEMPLATE.format(
         files_section=files_section,
+        rsync_section=rsync_section,
         env_section=env_section,
         run_command=run_command,
     )
