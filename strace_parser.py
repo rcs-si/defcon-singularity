@@ -25,6 +25,18 @@ MODULE_INSTALL_RE = re.compile(
     r'^(/share/pkg\.[^/]+/[^/]+/[^/]+/install)(?:/.*)?$'
 )
 
+# Modules skipped even if strace detects them — low-level runtime libraries
+# (BLAS, compilers, MPI) that either already exist in the base image or contain
+# cyclic symlinks that break rsync/cp during the Singularity build.
+MODULE_BLOCKLIST = {
+    "flexiblas",
+    "gcc",
+    "intel",
+    "openmpi",
+    "mvapich2",
+    "cuda",
+}
+
 # Error patterns — used only when filtering non-module paths
 ERROR_PATTERNS = (
     " = -1 ",
@@ -59,8 +71,10 @@ def parse_strace_file(strace_path: Path) -> List[str]:
                 # --- /share/pkg module paths ---
                 m = MODULE_INSTALL_RE.match(path)
                 if m:
-                    # Always capture, even from failed probes
-                    module_roots.add(m.group(1))
+                    # Extract module name (e.g. 'gcc' from /share/pkg.8/gcc/12.2.0/install)
+                    module_name = Path(m.group(1)).parts[3]
+                    if module_name not in MODULE_BLOCKLIST:
+                        module_roots.add(m.group(1))
                     continue
 
                 # Skip /share/pkg sub-paths that didn't match the install regex
@@ -105,10 +119,8 @@ def summarize_modules(strace_path: Path) -> List[str]:
             for path in PATH_RE.findall(line):
                 m = MODULE_INSTALL_RE.match(path)
                 if m:
-                    # /share/pkg.8/python3/3.12.4/install → python3/3.12.4
                     parts = Path(m.group(1)).parts
-                    # parts: ('/', 'share', 'pkg.8', 'python3', '3.12.4', 'install')
-                    if len(parts) >= 6:
+                    if len(parts) >= 6 and parts[3] not in MODULE_BLOCKLIST:
                         names.add(f"{parts[3]}/{parts[4]}")
     return sorted(names)
 
