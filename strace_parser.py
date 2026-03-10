@@ -47,6 +47,32 @@ ERROR_PATTERNS = (
 )
 
 
+def parse_blocked_module_libs(strace_path: Path) -> List[str]:
+    """
+    For blocklisted modules (gcc, intel, flexiblas etc.), return the individual
+    .so files that were actually successfully opened — not the whole install tree.
+    These are needed as runtime dependencies but their install dirs can't be
+    safely rsync'd due to cyclic symlinks.
+    """
+    libs: Set[str] = set()
+    with strace_path.open(errors="ignore") as f:
+        for line in f:
+            # Only successfully opened files
+            if any(err in line for err in ERROR_PATTERNS):
+                continue
+            for path in PATH_RE.findall(line):
+                m = MODULE_INSTALL_RE.match(path)
+                if not m:
+                    continue
+                module_name = Path(m.group(1)).parts[3]
+                if module_name not in MODULE_BLOCKLIST:
+                    continue
+                # Only capture actual .so files, not directories or other files
+                if re.search(r'\.so(\.\d+)*$', path):
+                    libs.add(path)
+    return sorted(libs)
+
+
 def parse_strace_file(strace_path: Path) -> List[str]:
     """
     Parse strace output and return a sorted list of paths to include in the

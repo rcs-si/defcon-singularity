@@ -31,7 +31,7 @@ import re
 import sys
 from pathlib import Path
 
-from strace_parser import parse_strace_file, summarize_modules
+from strace_parser import parse_strace_file, summarize_modules, parse_blocked_module_libs
 
 # ── DEFCON ascii art ──────────────────────────────────────────────────────────
 
@@ -252,25 +252,31 @@ def stage2(args):
     print("  Parsing strace output…")
     files = parse_strace_file(trace_path)
     modules = summarize_modules(trace_path)
+    blocked_libs = parse_blocked_module_libs(trace_path)
 
-    print(f"  Found {len(files)} module install root(s):")
+    print(f"  Found {len(modules)} module(s):")
     for m in modules:
         print(f"    {m}")
+    if blocked_libs:
+        print(f"  Found {len(blocked_libs)} runtime lib(s) from support modules (gcc/intel/flexiblas):")
+        for lib in blocked_libs:
+            print(f"    {lib}")
 
     # Parse environment
     print("  Loading environment variables…")
     env_vars = load_env_vars(env_path)
 
     # Build .def sections
-    # Project files → %files (Singularity handles these with a simple bind copy)
-    # Module install roots → %post rsync -rL (dereferences cyclic symlinks that
-    # break Singularity's internal cp -r used by %files)
+    # Project files + individual .so files from support modules → %files
+    # Module install roots → %setup rsync -rL (handles cyclic symlinks)
     project_files = [f for f in files if not f.startswith("/share/pkg")]
     module_roots  = [f for f in files if f.startswith("/share/pkg")]
 
+    # Combine project files with individual runtime libs from blocked modules
+    all_files = sorted(project_files + blocked_libs)
     files_section = (
-        "\n".join(f"    {p}" for p in project_files)
-        if project_files else "    # (no project files detected)"
+        "\n".join(f"    {p}" for p in all_files)
+        if all_files else "    # (no project files detected)"
     )
 
     rsync_lines = []
@@ -297,10 +303,13 @@ def stage2(args):
     base_path_parts = [p for p in existing_path.split(":") if p not in module_bins]
     env_vars["PATH"] = ":".join(module_bins + ["/usr/local/bin"] + base_path_parts)
 
-    # LD_LIBRARY_PATH: module lib dirs prepended
+    # LD_LIBRARY_PATH: module lib dirs + unique dirs from blocked .so files
     existing_ldpath = env_vars.get("LD_LIBRARY_PATH", "")
     base_ld_parts = [p for p in existing_ldpath.split(":") if p and p not in module_libs]
-    env_vars["LD_LIBRARY_PATH"] = ":".join(module_libs + base_ld_parts)
+    # Add unique parent directories of blocked libs (e.g. gcc lib64, mkl lib)
+    blocked_lib_dirs = sorted({str(Path(lib).parent) for lib in blocked_libs})
+    all_lib_dirs = module_libs + [d for d in blocked_lib_dirs if d not in module_libs]
+    env_vars["LD_LIBRARY_PATH"] = ":".join(all_lib_dirs + base_ld_parts)
 
     env_section = "\n".join(
         f"    export {k}={_shell_quote(v)}" for k, v in sorted(env_vars.items())
