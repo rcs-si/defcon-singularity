@@ -1,4 +1,4 @@
-# defcon — DEFinition CONtainer generator
+# defcon — Definition Container generator
 
 Analyses a job's runtime file dependencies via `strace` and produces a
 Singularity `.def` file that reproduces the environment inside a container.
