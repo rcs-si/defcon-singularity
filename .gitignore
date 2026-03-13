@@ -230,3 +230,8 @@ trace.out
 *_defcon.qsub
 *_defcon.run.sh
 *_defcon.def
+*.qsub
+
+# SGE job logs
+*.e[0-9]*
+*.o[0-9]*

@@ -21,7 +21,7 @@ singularity build container.sif container.def
 ## How it works
 
 ```
-Stage 1 (DEFCON 3→2):  defcon stage1 -i input.qsub -o output.qsub
+Stage 1 (DEFCON 3->2):  defcon stage1 -i input.qsub -o output.qsub
 ```
 - Parses your qsub/sbatch script and extracts scheduler directives + commands
 - Generates `output.run.sh`  — the original commands, unchanged
@@ -31,7 +31,7 @@ Stage 1 (DEFCON 3→2):  defcon stage1 -i input.qsub -o output.qsub
   3. Automatically calls `defcon stage2` to emit the `.def`
 
 ```
-Stage 2 (DEFCON 2→1):  defcon stage2 -t trace.out -e env.out -c "cmd" -o container.def
+Stage 2 (DEFCON 2->1):  defcon stage2 -t trace.out -e env.out -c "cmd" -o container.def
 ```
 - Parses the strace output to find all module install roots (`/share/pkg.*`)
   and project paths (`/projectnb`, `/project`, `/usr/local`)
