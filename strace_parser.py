@@ -2,6 +2,7 @@ from pathlib import Path
 import re
 from typing import List, Set
 
+# Paths that are never interesting (noise)
 IGNORE_PREFIXES = (
     "/proc",
     "/dev",
@@ -10,68 +11,153 @@ IGNORE_PREFIXES = (
     "/run",
 )
 
-# what should these be?
+# Paths we want to capture for non-module files (only on success)
 INTERESTING_PREFIXES = (
-    "/share/pkg.8",
     "/project",
+    "/projectnb",
     "/usr/local",
-    # add /projectnb, /usr2/youruser if we want it
 )
 
-PATH_RE = re.compile(r'"([^"]+)"')
+PATH_RE = re.compile(r'"(/[^"]+)"')
 
-# Match /share/pkg.8/PACKAGE/VERSION/install[/anything...]
-INSTALL_ROOT_RE = re.compile(r"^(/share/pkg\.8/[^/]+/[^/]+/install)(?:/.*)?$")
+# Collapse /share/pkg.X/PACKAGE/VERSION/install[/...] → install root
+MODULE_INSTALL_RE = re.compile(
+    r'^(/share/pkg\.[^/]+/[^/]+/[^/]+/install)(?:/.*)?$'
+)
 
-def looks_interesting(path: str) -> bool:
-    for p in IGNORE_PREFIXES:
-        if path.startswith(p):
-            return False
-    return any(path.startswith(p) for p in INTERESTING_PREFIXES) or path.startswith("/project")
+# Modules skipped even if strace detects them — low-level runtime libraries
+# (BLAS, compilers, MPI) that either already exist in the base image or contain
+# cyclic symlinks that break rsync/cp during the Singularity build.
+MODULE_BLOCKLIST = {
+    "flexiblas",
+    "gcc",
+    "intel",
+    "openmpi",
+    "mvapich2",
+    "cuda",
+}
+
+# Error patterns — used only when filtering non-module paths
+ERROR_PATTERNS = (
+    " = -1 ",
+    "ENOENT",
+    "EACCES",
+    "ENOTDIR",
+    "EISDIR",
+)
+
+
+def parse_blocked_module_libs(strace_path: Path) -> List[str]:
+    """
+    For blocklisted modules (gcc, intel, flexiblas etc.), return the individual
+    .so files that were actually successfully opened — not the whole install tree.
+    These are needed as runtime dependencies but their install dirs can't be
+    safely rsync'd due to cyclic symlinks.
+    """
+    libs: Set[str] = set()
+    with strace_path.open(errors="ignore") as f:
+        for line in f:
+            # Only successfully opened files
+            if any(err in line for err in ERROR_PATTERNS):
+                continue
+            for path in PATH_RE.findall(line):
+                m = MODULE_INSTALL_RE.match(path)
+                if not m:
+                    continue
+                module_name = Path(m.group(1)).parts[3]
+                if module_name not in MODULE_BLOCKLIST:
+                    continue
+                # Only capture actual .so files, not directories or other files
+                if re.search(r'\.so(\.\d+)*$', path):
+                    # Normalise double slashes introduced by strace
+                    libs.add(re.sub(r'//+', '/', path))
+    return sorted(libs)
 
 
 def parse_strace_file(strace_path: Path) -> List[str]:
-    raw_paths: Set[str] = set()
+    """
+    Parse strace output and return a sorted list of paths to include in the
+    Singularity %files section.
+
+    Strategy:
+    - /share/pkg.*  modules: extract install root from EVERY line, including
+      failed probes (ENOENT etc.).  The kernel probes many hwcap variants before
+      finding the right lib; those probe failures still prove the module is used.
+    - All other interesting paths: only keep successfully accessed paths
+      (skip lines containing error codes).
+    """
+    module_roots: Set[str] = set()
+    other_paths: Set[str] = set()
 
     with strace_path.open(errors="ignore") as f:
         for line in f:
-            # Skip failed syscalls (ENOENT, EACCES, etc.)
-            if " = -1 " in line:
-                continue
+            paths_in_line = PATH_RE.findall(line)
+            is_error_line = any(err in line for err in ERROR_PATTERNS)
 
-            m = PATH_RE.search(line)
-            if not m:
-                continue
+            for path in paths_in_line:
+                # --- /share/pkg module paths ---
+                m = MODULE_INSTALL_RE.match(path)
+                if m:
+                    # Extract module name (e.g. 'gcc' from /share/pkg.8/gcc/12.2.0/install)
+                    module_name = Path(m.group(1)).parts[3]
+                    if module_name not in MODULE_BLOCKLIST:
+                        module_roots.add(m.group(1))
+                    continue
 
-            path = m.group(1)
-            if not path.startswith("/"):
-                continue
+                # Skip /share/pkg sub-paths that didn't match the install regex
+                # (e.g. bare "/share/pkg.8" directory entries — not useful)
+                if path.startswith("/share/pkg"):
+                    continue
 
-            if looks_interesting(path):
-                raw_paths.add(path)
+                # --- Other interesting paths (only on success) ---
+                if is_error_line:
+                    continue
 
-    module_install_roots: Set[str] = set()
-    other_paths: Set[str] = set()
+                if any(path.startswith(p) for p in IGNORE_PREFIXES):
+                    continue
 
-    for p in raw_paths:
-        m = INSTALL_ROOT_RE.match(p)
-        if m:
-            # Collapse ANY file under .../install/... to just .../install
-            module_install_roots.add(m.group(1))
-        else:
-            # Keep non /share/pkg.8 stuff (e.g., /projectnb, /usr/local)
-            if not p.startswith("/share/pkg.8"):
-                other_paths.add(p)
+                if any(path.startswith(p) for p in INTERESTING_PREFIXES):
+                    other_paths.add(path)
 
-    # Final list = all distinct module install roots + other non-module paths
-    final_paths = sorted(module_install_roots | other_paths)
-    return final_paths
+    # For project paths, drop bare directories when a more specific child path
+    # exists — e.g. drop /projectnb/foo if /projectnb/foo/test.py is present.
+    # This prevents accidentally copying the whole project directory into the
+    # container just because Python stat()'d it while loading a script.
+    pruned: Set[str] = set()
+    sorted_others = sorted(other_paths)
+    for path in sorted_others:
+        # Keep this path only if no other path starts with it + "/"
+        is_parent = any(
+            other.startswith(path + "/")
+            for other in sorted_others
+            if other != path
+        )
+        if not is_parent:
+            pruned.add(path)
+
+    return sorted(module_roots | pruned)
+
+
+def summarize_modules(strace_path: Path) -> List[str]:
+    """Return human-readable module names detected (e.g. 'python3/3.12.4')."""
+    names: Set[str] = set()
+    with strace_path.open(errors="ignore") as f:
+        for line in f:
+            for path in PATH_RE.findall(line):
+                m = MODULE_INSTALL_RE.match(path)
+                if m:
+                    parts = Path(m.group(1)).parts
+                    if len(parts) >= 6 and parts[3] not in MODULE_BLOCKLIST:
+                        names.add(f"{parts[3]}/{parts[4]}")
+    return sorted(names)
 
 
 if __name__ == "__main__":
     import sys
-    try:
-        for p in parse_strace_file(Path(sys.argv[1])):
-            print(p)
-    except BrokenPipeError:
-        pass
+    path = Path(sys.argv[1])
+    print("=== Module install roots ===")
+    for p in parse_strace_file(path):
+        print(p)
+    print("\n=== Detected modules ===")
+    for name in summarize_modules(path):
+        print(f"  module load {name}")
