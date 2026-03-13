@@ -205,3 +205,28 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project-specific
+# Superseded scripts (replaced by defcon.py)
+def_generator.py
+run_with_strace.sh
+capture_environment.sh
+
+# Scratch notes
+notes.md
+NOTES.md
+
+# strace/env capture files
+*.out
+*.env
+env.out
+trace.out
+
+# Singularity build artifacts
+*.sif
+*.def
+
+# Generated job scripts
+*_defcon.qsub
+*_defcon.run.sh
+*_defcon.def
