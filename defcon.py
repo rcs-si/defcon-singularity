@@ -64,6 +64,7 @@ From: /projectnb/rcs-intern/brian/alma8_singularity/images/scc-alma8.simg
 {rsync_section}
 
 %post
+    export DRACUT_QUIET=1
     yum -y update
     yum -y install python3 python3-pip
 
