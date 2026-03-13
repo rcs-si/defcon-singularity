@@ -19,7 +19,7 @@ Stages count DOWN to DEFCON 1 (package ready), like the real threat-level scale.
     Then just:  qsub output.qsub   (or sbatch)
 
   Stage 2 (DEFCON 1):
-    defcon stage2 -t trace.out -e env.out -c "your command" -o container.def
+    defcon stage2 -t trace.out -e env.out --command-file job.run.sh -o container.def
 
     Parses the strace + env files and writes a Singularity definition.
     Called automatically from the instrumented job script.
@@ -169,10 +169,6 @@ def stage1(args):
     parsed = parse_qsub(script_text)
 
     scheduler = args.scheduler or parsed["scheduler"]
-    # Build the runscript command: module loads first, then user commands, joined with &&
-    all_steps = parsed["module_loads"] + parsed["commands"]
-    full_command = " && ".join(all_steps)
-
     # Paths for the strace job's output files (use $TMPDIR if available on cluster)
     trace_file = "$TMPDIR/defcon_trace.out"
     env_file   = "$TMPDIR/defcon_env.out"
@@ -220,7 +216,7 @@ def stage1(args):
             f'python3 {defcon_exe} stage2'
             f' -t {trace_file}'
             f' -e {env_file}'
-            f' -c "{full_command}"'
+            f' --command-file {run_script_path}'
             f' -o {def_out}'
         ),
     ]
@@ -327,7 +323,7 @@ def stage2(args):
     )
 
     # Strip 'module load ...' from runscript — handled by PATH now
-    raw_command = args.command or "bash"
+    raw_command = _load_raw_command(args)
     run_steps = [
         step.strip()
         for step in re.split(r"\s*&&\s*", raw_command)
@@ -351,6 +347,21 @@ def stage2(args):
     print()
     print(DEFCON_STATUS[1])
     print()
+
+
+def _load_raw_command(args) -> str:
+    """
+    Load the run command from --command-file when provided, else from --command.
+    """
+    if args.command_file:
+        command_path = Path(args.command_file)
+        if not command_path.exists():
+            sys.exit(f"Error: command file not found: {command_path}")
+        parsed = parse_qsub(command_path.read_text())
+        all_steps = parsed["module_loads"] + parsed["commands"]
+        if all_steps:
+            return " && ".join(all_steps)
+    return args.command or "bash"
 
 
 def _shell_quote(value: str) -> str:
@@ -391,8 +402,10 @@ def main():
                     help="strace output file")
     p2.add_argument("-e", "--env",     required=True, metavar="ENV.OUT",
                     help="env -0 dump file")
-    p2.add_argument("-c", "--command", required=True, metavar="'CMD'",
-                    help="Command to embed in %%runscript")
+    p2.add_argument("-c", "--command", metavar="'CMD'",
+                    help="Command to embed in %%runscript (legacy; use --command-file)")
+    p2.add_argument("--command-file", metavar="JOB.RUN.SH",
+                    help="Path to a script file from which run commands are extracted")
     p2.add_argument("-o", "--output",  required=True, metavar="CONTAINER.DEF",
                     help="Output Singularity definition file")
 
@@ -401,6 +414,8 @@ def main():
     if args.stage == "stage1":
         stage1(args)
     elif args.stage == "stage2":
+        if not args.command and not args.command_file:
+            parser.error("stage2 requires one of: -c/--command or --command-file")
         stage2(args)
     else:
         parser.print_help()

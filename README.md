@@ -45,11 +45,12 @@ Stage 1 (DEFCON 3 to 2):  defcon stage1 -i input.qsub -o output.qsub
   2. Runs output.run.sh under strace
   3. Automatically calls defcon stage2 to emit the .def
 
-Stage 2 (DEFCON 2 to 1):  defcon stage2 -t trace.out -e env.out -c "cmd" -o container.def
-
-- Parses the strace output to find all module install roots (/share/pkg.*)
-  and project paths (/projectnb, /project, /usr/local)
-- Writes a Singularity definition with %files, %environment, %runscript
+```
+Stage 2 (DEFCON 2→1):  defcon stage2 -t trace.out -e env.out --command-file job.run.sh -o container.def
+```
+- Parses the strace output to find all module install roots (`/share/pkg.*`)
+  and project paths (`/projectnb`, `/project`, `/usr/local`)
+- Writes a `Singularity` definition with `%files`, `%environment`, `%runscript`
 
 ## Options
 
@@ -65,13 +66,14 @@ Stage 2 (DEFCON 2 to 1):  defcon stage2 -t trace.out -e env.out -c "cmd" -o cont
 ```
 -t / --trace     strace output file
 -e / --env       env -0 dump file
--c / --command   Command to embed in %runscript
+--command-file   Script file to extract run commands from (recommended)
+-c / --command   Command to embed in %runscript (legacy fallback)
 -o / --output    Output Singularity definition file
 ```
 
 ## Files
 | File | Purpose |
 |------|---------|
-| defcon.py | Unified CLI — stage1 and stage2 |
-| strace_parser.py | Parse strace output; extract module paths |
-| test.py | Sample workload (numpy, pandas, scipy) |
+| `defcon.py` | Unified CLI — stage1 and stage2 |
+| `strace_parser.py` | Parse strace output; extract module paths |
+| `test.py` | Sample workload (`pandas` DataFrame) |
