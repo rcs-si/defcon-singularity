@@ -1,0 +1,49 @@
+Matrix multiply OK: shape=(100, 100), mean=25.1823
+FFT OK: 1024 bins, peak at bin 1023
+Groupby OK:
+           mean       std  count
+group                           
+a      0.003169  0.964705   1000
+b     -0.032531  0.996379   1000
+c     -0.024819  1.043769   1000
+Resample OK: 12 months, mean=0.0191
+Linear solve OK: residual=1.62e-13
+
+All tests passed.
+
+  ██████╗ ███████╗███████╗ ██████╗ ██████╗ ███╗   ██╗
+  ██╔══██╗██╔════╝██╔════╝██╔════╝██╔═══██╗████╗  ██║
+  ██║  ██║█████╗  █████╗  ██║     ██║   ██║██╔██╗ ██║
+  ██║  ██║██╔══╝  ██╔══╝  ██║     ██║   ██║██║╚██╗██║
+  ██████╔╝███████╗██║     ╚██████╗╚██████╔╝██║ ╚████║
+  ╚═════╝ ╚══════╝╚═╝      ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝
+
+🔶 DEFCON 2  — Job complete. Parsing dependencies…
+
+  Parsing strace output…
+  Found 1 module(s):
+    python3/3.13.8
+  Found 16 runtime lib(s) from support modules (gcc/intel/flexiblas):
+    /share/pkg.8/flexiblas/3.4.5/install/lib64/flexiblas/libflexiblas_fallback_lapack.so
+    /share/pkg.8/flexiblas/3.4.5/install/lib64/flexiblas/libflexiblas_hook_dummy.so
+    /share/pkg.8/flexiblas/3.4.5/install/lib64/flexiblas/libflexiblas_hook_profile.so
+    /share/pkg.8/flexiblas/3.4.5/install/lib64/flexiblas/libflexiblas_mklopenmp.so
+    /share/pkg.8/flexiblas/3.4.5/install/lib64/flexiblas/libflexiblas_netlib.so
+    /share/pkg.8/flexiblas/3.4.5/install/lib64/libflexiblas.so.3
+    /share/pkg.8/gcc/12.2.0/install/lib64/libgcc_s.so.1
+    /share/pkg.8/gcc/12.2.0/install/lib64/libgfortran.so.5
+    /share/pkg.8/gcc/12.2.0/install/lib64/libgomp.so.1
+    /share/pkg.8/gcc/12.2.0/install/lib64/libquadmath.so.0
+    /share/pkg.8/gcc/12.2.0/install/lib64/libstdc++.so.6
+    /share/pkg.8/intel/2024.0/install/mkl/latest/lib/libmkl_avx2.so.2
+    /share/pkg.8/intel/2024.0/install/mkl/latest/lib/libmkl_core.so.2
+    /share/pkg.8/intel/2024.0/install/mkl/latest/lib/libmkl_gf_lp64.so.2
+    /share/pkg.8/intel/2024.0/install/mkl/latest/lib/libmkl_gnu_thread.so.2
+    /share/pkg.8/intel/2024.0/install/mkl/latest/lib/libmkl_vml_avx2.so.2
+  Loading environment variables…
+  Stripped 'module load' from runscript (modules are on PATH).
+
+  Written: test_job_defcon.def
+
+✅ DEFCON 1  — Container definition ready. You are go for launch.
+
