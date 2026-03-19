@@ -1,0 +1,75 @@
+Bootstrap: localimage
+From: /projectnb/rcs-intern/brian/alma8_singularity/images/scc-alma8.simg
+
+%files
+    /projectnb/rcs-intern/reetom/defcon-singularity
+    /usr/local/lmod/8.7.12/init/bash
+    /usr/local/lmod/8.7.12/init/lmod_bash_completions
+
+%setup
+    # rsync -rL dereferences cyclic symlinks that break %%files cp -r
+
+
+%post
+    yum -y update
+    yum -y install python3 python3-pip
+
+%environment
+    export ARC="linux-x64"
+    export BASH_ENV="/usr/local/lmod/8.7.12/init/bash"
+    export ENVIRONMENT="BATCH"
+    export HOME="/usr4/ugrad/rgangopa"
+    export JOB_ID="3805763"
+    export JOB_NAME="ctest_defcon.qsub"
+    export JOB_SCRIPT="/var/spool/sge/scc-yg2/job_scripts/3805763"
+    export LANG="C"
+    export LD_LIBRARY_PATH=""
+    export LMOD_CMD="/usr/local/lmod/8.7.12/libexec/lmod"
+    export LMOD_DIR="/usr/local/lmod/8.7.12/libexec"
+    export LMOD_PKG="/usr/local/lmod/8.7.12"
+    export LMOD_ROOT="/usr/local/lmod"
+    export LMOD_SETTARG_FULL_SUPPORT="no"
+    export LMOD_SHELL_PRGM="bash"
+    export LMOD_VERSION="8.7.12"
+    export LMOD_sys="Linux"
+    export MANPATH="/usr/local/lmod/8.7.12/share/man:"
+    export MODULEPATH="/share/module.8/bioinformatics:/share/module.8/chemistry:/share/module.8/gis:/share/module.8/imaging:/share/module.8/libraries:/share/module.8/machine-learning:/share/module.8/math-eng:/share/module.8/programming:/share/module.8/statistics:/share/module.8/utilities:/share/module.8/visualization"
+    export MODULEPATH_ROOT="/usr/local/modulefiles"
+    export MODULESHOME="/usr/local/lmod/8.7.12"
+    export NHOSTS="1"
+    export NQUEUES="1"
+    export NSLOTS="1"
+    export OMP_NUM_THREADS="1"
+    export PATH="/usr/local/bin:/scratch/3805763.1.y:/usr/java/default/jre/bin:/usr/java/default/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/opt/dell/srvadmin/bin:/opt/TurboVNC/bin:/usr4/ugrad/rgangopa/bin:.:/usr4/ugrad/rgangopa/bin:."
+    export QUEUE="y"
+    export REQNAME="ctest_defcon.qsub"
+    export REQUEST="ctest_defcon.qsub"
+    export RESTARTED="0"
+    export SGE_ACCOUNT="sge"
+    export SGE_ARCH="linux-x64"
+    export SGE_BINARY_PATH="/usr/local/ogs-ge2011.11.p1/sge_root/bin/linux-x64"
+    export SGE_CELL="default"
+    export SGE_CWD_PATH="/projectnb/rcs-intern/reetom/defcon-singularity"
+    export SGE_JOB_SPOOL_DIR="/var/spool/sge/scc-yg2/active_jobs/3805763.1"
+    export SGE_O_HOME="/usr4/ugrad/rgangopa"
+    export SGE_O_HOST="scc1"
+    export SGE_O_LOGNAME="rgangopa"
+    export SGE_O_MAIL="/var/spool/mail/rgangopa"
+    export SGE_O_PATH="/usr/java/default/jre/bin:/usr/java/default/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/opt/dell/srvadmin/bin:/opt/TurboVNC/bin:/usr4/ugrad/rgangopa/bin:."
+    export SGE_O_SHELL="/bin/bash"
+    export SGE_O_WORKDIR="/projectnb/rcs-intern/reetom/defcon-singularity"
+    export SGE_ROOT="/usr/local/sge/sge_root"
+    export SGE_STDERR_PATH="/projectnb/rcs-intern/reetom/defcon-singularity/ctest_defcon.qsub.e3805763"
+    export SGE_STDIN_PATH="/dev/null"
+    export SGE_STDOUT_PATH="/projectnb/rcs-intern/reetom/defcon-singularity/ctest_defcon.qsub.o3805763"
+    export SGE_TASK_FIRST="undefined"
+    export SGE_TASK_ID="undefined"
+    export SGE_TASK_LAST="undefined"
+    export SGE_TASK_STEPSIZE="undefined"
+    export SHELL="/usr/local/etc/sge/shell"
+    export TMP="/scratch/3805763.1.y"
+    export TMPDIR="/scratch/3805763.1.y"
+    export USER="rgangopa"
+
+%runscript
+    ./ctest

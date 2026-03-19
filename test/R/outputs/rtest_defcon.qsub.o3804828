@@ -1,0 +1,35 @@
+Matrix multiply OK: dim=100 x 100, mean=24.6843
+Linear solve OK: residual=2.37e-13
+    group         mean        sd count
+   <char>        <num>     <num> <int>
+1:      a -0.010434747 0.9873407  1000
+2:      b -0.008262734 0.9702565  1000
+3:      c  0.009387605 1.0000143  1000
+CSV roundtrip OK: 3 rows
+All R tests passed.
+
+  ██████╗ ███████╗███████╗ ██████╗ ██████╗ ███╗   ██╗
+  ██╔══██╗██╔════╝██╔════╝██╔════╝██╔═══██╗████╗  ██║
+  ██║  ██║█████╗  █████╗  ██║     ██║   ██║██╔██╗ ██║
+  ██║  ██║██╔══╝  ██╔══╝  ██║     ██║   ██║██║╚██╗██║
+  ██████╔╝███████╗██║     ╚██████╗╚██████╔╝██║ ╚████║
+  ╚═════╝ ╚══════╝╚═╝      ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝
+
+🔶 DEFCON 2  — Job complete. Parsing dependencies…
+
+  Parsing strace output…
+  Found 1 module(s):
+    r/4.5.2
+  Found 5 runtime lib(s) from support modules (gcc/intel/flexiblas):
+    /share/pkg.7/gcc/12.2.0/install/lib/../lib64/libgcc_s.so.1
+    /share/pkg.8/flexiblas/3.4.5/install/lib64/flexiblas/libflexiblas_fallback_lapack.so
+    /share/pkg.8/flexiblas/3.4.5/install/lib64/flexiblas/libflexiblas_hook_dummy.so
+    /share/pkg.8/flexiblas/3.4.5/install/lib64/flexiblas/libflexiblas_hook_profile.so
+    /share/pkg.8/flexiblas/3.4.5/install/lib64/flexiblas/libflexiblas_netlib.so
+  Loading environment variables…
+  Stripped 'module load' from runscript (modules are on PATH).
+
+  Written: rtest_defcon.def
+
+✅ DEFCON 1  — Container definition ready. You are go for launch.
+

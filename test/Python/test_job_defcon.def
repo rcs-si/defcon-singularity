@@ -1,0 +1,189 @@
+Bootstrap: localimage
+From: /projectnb/rcs-intern/brian/alma8_singularity/images/scc-alma8.simg
+
+%files
+    /projectnb/rcs-intern/reetom/defcon-singularity/test.py
+    /share/pkg.8/flexiblas/3.4.5/install/lib64/flexiblas/libflexiblas_fallback_lapack.so
+    /share/pkg.8/flexiblas/3.4.5/install/lib64/flexiblas/libflexiblas_hook_dummy.so
+    /share/pkg.8/flexiblas/3.4.5/install/lib64/flexiblas/libflexiblas_hook_profile.so
+    /share/pkg.8/flexiblas/3.4.5/install/lib64/flexiblas/libflexiblas_mklopenmp.so
+    /share/pkg.8/flexiblas/3.4.5/install/lib64/flexiblas/libflexiblas_netlib.so
+    /share/pkg.8/flexiblas/3.4.5/install/lib64/libflexiblas.so.3
+    /share/pkg.8/gcc/12.2.0/install/lib64/libgcc_s.so.1
+    /share/pkg.8/gcc/12.2.0/install/lib64/libgfortran.so.5
+    /share/pkg.8/gcc/12.2.0/install/lib64/libgomp.so.1
+    /share/pkg.8/gcc/12.2.0/install/lib64/libquadmath.so.0
+    /share/pkg.8/gcc/12.2.0/install/lib64/libstdc++.so.6
+    /share/pkg.8/intel/2024.0/install/mkl/latest/lib/libmkl_avx512.so.2
+    /share/pkg.8/intel/2024.0/install/mkl/latest/lib/libmkl_core.so.2
+    /share/pkg.8/intel/2024.0/install/mkl/latest/lib/libmkl_gf_lp64.so.2
+    /share/pkg.8/intel/2024.0/install/mkl/latest/lib/libmkl_gnu_thread.so.2
+    /share/pkg.8/intel/2024.0/install/mkl/latest/lib/libmkl_vml_avx512.so.2
+    /usr/local/lmod/8.7.12/init/bash
+    /usr/local/lmod/8.7.12/init/lmod_bash_completions
+    /usr/local/lmod/8.7.12/libexec/../init/lmodrc.lua
+    /usr/local/lmod/8.7.12/libexec/../lib/lfs.so
+    /usr/local/lmod/8.7.12/libexec/../lib/tcl2lua.so
+    /usr/local/lmod/8.7.12/libexec/../lib/term/core.so
+    /usr/local/lmod/8.7.12/libexec/../messageDir/en.lua
+    /usr/local/lmod/8.7.12/libexec/../shells/Bare.lua
+    /usr/local/lmod/8.7.12/libexec/../shells/BaseShell.lua
+    /usr/local/lmod/8.7.12/libexec/../shells/Bash.lua
+    /usr/local/lmod/8.7.12/libexec/../shells/CMake.lua
+    /usr/local/lmod/8.7.12/libexec/../shells/Csh.lua
+    /usr/local/lmod/8.7.12/libexec/../shells/Fish.lua
+    /usr/local/lmod/8.7.12/libexec/../shells/Lisp.lua
+    /usr/local/lmod/8.7.12/libexec/../shells/Perl.lua
+    /usr/local/lmod/8.7.12/libexec/../shells/Python.lua
+    /usr/local/lmod/8.7.12/libexec/../shells/R.lua
+    /usr/local/lmod/8.7.12/libexec/../shells/Rc.lua
+    /usr/local/lmod/8.7.12/libexec/../shells/Ruby.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/Banner.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/BeautifulTbl.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/ColumnTable.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/Cosmic.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/Dbg.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/Optiks.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/Optiks_Option.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/TermWidth.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/base64.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/capture.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/declare.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/deepcopy.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/fileOps.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/haveTermSupport.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/i18n/init.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/i18n/interpolate.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/i18n/plural.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/i18n/variants.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/i18n/version.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/inherits.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/lmod_system_execute.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/pairsByKeys.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/serializeTbl.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/strict.lua
+    /usr/local/lmod/8.7.12/libexec/../tools/string_utils.lua
+    /usr/local/lmod/8.7.12/libexec/CTimer.lua
+    /usr/local/lmod/8.7.12/libexec/Cache.lua
+    /usr/local/lmod/8.7.12/libexec/DirTree.lua
+    /usr/local/lmod/8.7.12/libexec/Exec.lua
+    /usr/local/lmod/8.7.12/libexec/FrameStk.lua
+    /usr/local/lmod/8.7.12/libexec/Hook.lua
+    /usr/local/lmod/8.7.12/libexec/HookArray.lua
+    /usr/local/lmod/8.7.12/libexec/LocationT.lua
+    /usr/local/lmod/8.7.12/libexec/MC_Access.lua
+    /usr/local/lmod/8.7.12/libexec/MC_CheckSyntax.lua
+    /usr/local/lmod/8.7.12/libexec/MC_ComputeHash.lua
+    /usr/local/lmod/8.7.12/libexec/MC_DependencyCk.lua
+    /usr/local/lmod/8.7.12/libexec/MC_Load.lua
+    /usr/local/lmod/8.7.12/libexec/MC_MgrLoad.lua
+    /usr/local/lmod/8.7.12/libexec/MC_Refresh.lua
+    /usr/local/lmod/8.7.12/libexec/MC_Show.lua
+    /usr/local/lmod/8.7.12/libexec/MC_Spider.lua
+    /usr/local/lmod/8.7.12/libexec/MC_Unload.lua
+    /usr/local/lmod/8.7.12/libexec/MN_Between.lua
+    /usr/local/lmod/8.7.12/libexec/MN_Exact.lua
+    /usr/local/lmod/8.7.12/libexec/MN_Latest.lua
+    /usr/local/lmod/8.7.12/libexec/MN_Match.lua
+    /usr/local/lmod/8.7.12/libexec/MName.lua
+    /usr/local/lmod/8.7.12/libexec/MRC.lua
+    /usr/local/lmod/8.7.12/libexec/MT.lua
+    /usr/local/lmod/8.7.12/libexec/Master.lua
+    /usr/local/lmod/8.7.12/libexec/MasterControl.lua
+    /usr/local/lmod/8.7.12/libexec/ModuleA.lua
+    /usr/local/lmod/8.7.12/libexec/Options.lua
+    /usr/local/lmod/8.7.12/libexec/Pkg.lua
+    /usr/local/lmod/8.7.12/libexec/PkgBase.lua
+    /usr/local/lmod/8.7.12/libexec/ReadLmodRC.lua
+    /usr/local/lmod/8.7.12/libexec/SitePackage.lua
+    /usr/local/lmod/8.7.12/libexec/Spider.lua
+    /usr/local/lmod/8.7.12/libexec/StandardPackage.lua
+    /usr/local/lmod/8.7.12/libexec/Timer.lua
+    /usr/local/lmod/8.7.12/libexec/Var.lua
+    /usr/local/lmod/8.7.12/libexec/Version.lua
+    /usr/local/lmod/8.7.12/libexec/cmdfuncs.lua
+    /usr/local/lmod/8.7.12/libexec/collectionFileA.lua
+    /usr/local/lmod/8.7.12/libexec/colorize.lua
+    /usr/local/lmod/8.7.12/libexec/lmod
+    /usr/local/lmod/8.7.12/libexec/loadModuleFile.lua
+    /usr/local/lmod/8.7.12/libexec/modfuncs.lua
+    /usr/local/lmod/8.7.12/libexec/mrc_funcs.lua
+    /usr/local/lmod/8.7.12/libexec/mrc_load.lua
+    /usr/local/lmod/8.7.12/libexec/mrc_sandbox.lua
+    /usr/local/lmod/8.7.12/libexec/myGlobals.lua
+    /usr/local/lmod/8.7.12/libexec/pager.lua
+    /usr/local/lmod/8.7.12/libexec/parseVersion.lua
+    /usr/local/lmod/8.7.12/libexec/sandbox.lua
+    /usr/local/lmod/8.7.12/libexec/term/init.lua
+    /usr/local/lmod/8.7.12/libexec/utils.lua
+    /usr/local/lmod/cache/8/cacheDir/spiderT.luac_5.3
+    /usr/local/lmod/cache/8/system.txt
+
+%setup
+    # rsync -rL dereferences cyclic symlinks that break %%files cp -r
+    mkdir -p ${SINGULARITY_ROOTFS}/share/pkg.8/python3/3.13.8/install
+    rsync -rL /share/pkg.8/python3/3.13.8/install/ ${SINGULARITY_ROOTFS}/share/pkg.8/python3/3.13.8/install/
+
+%post
+    yum -y update
+    yum -y install python3 python3-pip
+
+%environment
+    export ARC="linux-x64"
+    export BASH_ENV="/usr/local/lmod/8.7.12/init/bash"
+    export ENVIRONMENT="BATCH"
+    export HOME="/usr4/ugrad/rgangopa"
+    export JOB_ID="3728618"
+    export JOB_NAME="test_job_defcon.qsub"
+    export JOB_SCRIPT="/var/spool/sge/scc-yp1/job_scripts/3728618"
+    export LANG="C"
+    export LD_LIBRARY_PATH="/share/pkg.8/python3/3.13.8/install/lib64:/share/pkg.8/python3/3.13.8/install/lib:/share/pkg.8/flexiblas/3.4.5/install/lib64:/share/pkg.8/flexiblas/3.4.5/install/lib64/flexiblas:/share/pkg.8/gcc/12.2.0/install/lib64:/share/pkg.8/intel/2024.0/install/mkl/latest/lib"
+    export LMOD_CMD="/usr/local/lmod/8.7.12/libexec/lmod"
+    export LMOD_DIR="/usr/local/lmod/8.7.12/libexec"
+    export LMOD_PKG="/usr/local/lmod/8.7.12"
+    export LMOD_ROOT="/usr/local/lmod"
+    export LMOD_SETTARG_FULL_SUPPORT="no"
+    export LMOD_SHELL_PRGM="bash"
+    export LMOD_VERSION="8.7.12"
+    export LMOD_sys="Linux"
+    export MANPATH="/usr/local/lmod/8.7.12/share/man:"
+    export MODULEPATH="/share/module.8/bioinformatics:/share/module.8/chemistry:/share/module.8/gis:/share/module.8/imaging:/share/module.8/libraries:/share/module.8/machine-learning:/share/module.8/math-eng:/share/module.8/programming:/share/module.8/statistics:/share/module.8/utilities:/share/module.8/visualization"
+    export MODULEPATH_ROOT="/usr/local/modulefiles"
+    export MODULESHOME="/usr/local/lmod/8.7.12"
+    export NHOSTS="1"
+    export NQUEUES="1"
+    export NSLOTS="1"
+    export OMP_NUM_THREADS="1"
+    export PATH="/share/pkg.8/python3/3.13.8/install/bin:/usr/local/bin:/scratch/3728618.1.cyberteam-pub:/usr/java/default/jre/bin:/usr/java/default/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/opt/dell/srvadmin/bin:/opt/TurboVNC/bin:/usr4/ugrad/rgangopa/bin:.:/usr4/ugrad/rgangopa/bin:."
+    export QUEUE="cyberteam-pub"
+    export REQNAME="test_job_defcon.qsub"
+    export REQUEST="test_job_defcon.qsub"
+    export RESTARTED="0"
+    export SGE_ACCOUNT="sge"
+    export SGE_ARCH="linux-x64"
+    export SGE_BINARY_PATH="/usr/local/ogs-ge2011.11.p1/sge_root/bin/linux-x64"
+    export SGE_CELL="default"
+    export SGE_CWD_PATH="/projectnb/rcs-intern/reetom/defcon-singularity"
+    export SGE_JOB_SPOOL_DIR="/var/spool/sge/scc-yp1/active_jobs/3728618.1"
+    export SGE_O_HOME="/usr4/ugrad/rgangopa"
+    export SGE_O_HOST="scc1"
+    export SGE_O_LOGNAME="rgangopa"
+    export SGE_O_MAIL="/var/spool/mail/rgangopa"
+    export SGE_O_PATH="/usr/java/default/jre/bin:/usr/java/default/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/opt/dell/srvadmin/bin:/opt/TurboVNC/bin:/usr4/ugrad/rgangopa/bin:."
+    export SGE_O_SHELL="/bin/bash"
+    export SGE_O_WORKDIR="/projectnb/rcs-intern/reetom/defcon-singularity"
+    export SGE_ROOT="/usr/local/sge/sge_root"
+    export SGE_STDERR_PATH="/projectnb/rcs-intern/reetom/defcon-singularity/test_job_defcon.qsub.e3728618"
+    export SGE_STDIN_PATH="/dev/null"
+    export SGE_STDOUT_PATH="/projectnb/rcs-intern/reetom/defcon-singularity/test_job_defcon.qsub.o3728618"
+    export SGE_TASK_FIRST="undefined"
+    export SGE_TASK_ID="undefined"
+    export SGE_TASK_LAST="undefined"
+    export SGE_TASK_STEPSIZE="undefined"
+    export SHELL="/usr/local/etc/sge/shell"
+    export TMP="/scratch/3728618.1.cyberteam-pub"
+    export TMPDIR="/scratch/3728618.1.cyberteam-pub"
+    export USER="rgangopa"
+
+%runscript
+    python3 test.py
