@@ -166,17 +166,18 @@ trace.out
 *_defcon.def
 *.qsub
 
-# SGE job logs
-*.e[0-9]*
-*.o[0-9]*
+# Keep example qsubs versioned in both layouts
+!test/**/*.qsub
+!docs/examples/**/*.qsub
 
 # Override: keep EVERYTHING in test/ (except hidden)
-
 !test/
 !test/**
-
-# But still ignore hidden files inside test/
 test/**/.*
 
 # still ignore large binaries
 test/**/*.sif
+
+# SGE job logs
+*.e[0-9]*
+*.o[0-9]*

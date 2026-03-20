@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "defcon"
+dynamic = ["version"]
+description = "Generate Singularity definition files from strace-captured job dependencies"
+readme = { file = "README.md", content-type = "text/markdown" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+  { name = "Reetom Gangopadhyay" },
+  { name = "Brian Gregor" }
+]
+requires-python = ">=3.9"
+keywords = ["singularity", "apptainer", "hpc", "strace", "container"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: System :: Systems Administration",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "build>=1.2.2",
+  "pytest>=8.0",
+  "twine>=5.0",
+]
+
+[project.scripts]
+defcon = "defcon_singularity.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.dynamic]
+version = { attr = "defcon_singularity.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
