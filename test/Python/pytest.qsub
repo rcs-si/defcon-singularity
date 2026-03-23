@@ -1,6 +1,0 @@
-#!/bin/bash -l
-#$ -pe omp 1
-#$ -l h_rt=0:10:00
-
-module load python3/3.13.8
-python3 test.py
