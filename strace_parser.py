@@ -1,6 +1,6 @@
 from pathlib import Path
 import re
-from typing import List, Set
+from typing import List, Set, Tuple
 
 # Paths that are never interesting (noise)
 IGNORE_PREFIXES = (
@@ -9,6 +9,7 @@ IGNORE_PREFIXES = (
     "/sys",
     "/tmp",
     "/run",
+    "/usr/local/lmod",   # Fix #3: lmod init files belong on the host, not the container
 )
 
 # Paths we want to capture for non-module files (only on success)
@@ -75,10 +76,14 @@ def parse_blocked_module_libs(strace_path: Path) -> List[str]:
     return sorted(libs)
 
 
-def parse_strace_file(strace_path: Path) -> List[str]:
+def parse_strace_file(strace_path: Path,
+                      exclude_paths: Tuple[str, ...] = ()) -> List[str]:
     """
     Parse strace output and return a sorted list of paths to include in the
     Singularity %files section.
+
+    exclude_paths: tuple of path prefixes to always skip (e.g. the defcon
+                   working directory so it doesn't get bundled into %files).
 
     Strategy:
     - /share/pkg.*  modules: extract install root from EVERY line, including
@@ -115,6 +120,10 @@ def parse_strace_file(strace_path: Path) -> List[str]:
                     continue
 
                 if any(path.startswith(p) for p in IGNORE_PREFIXES):
+                    continue
+
+                # Fix #2: skip caller-supplied exclusions (e.g. defcon's own workdir)
+                if exclude_paths and any(path.startswith(e) for e in exclude_paths):
                     continue
 
                 if any(path.startswith(p) for p in INTERESTING_PREFIXES):

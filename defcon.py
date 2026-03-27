@@ -84,6 +84,18 @@ _ENV_BLOCKLIST = {
     "S_COLORS", "which_declare",
     # Singularity sets these itself
     "SINGULARITY_CACHEDIR", "SINGULARITY_BIND", "SINGULARITYENV_PREPEND_PATH",
+    # Fix #1: SGE / job scheduler runtime vars — meaningless inside a container
+    "JOB_ID", "JOB_NAME", "JOB_SCRIPT",
+    "NHOSTS", "NQUEUES", "NSLOTS",
+    "QUEUE", "REQNAME", "REQUEST", "RESTARTED",
+    "ENVIRONMENT",          # SGE "BATCH" flag
+    "TMP", "TMPDIR",        # scratch dirs that won't exist in the container
+    "USER", "HOME", "SHELL",
+    "MANPATH",
+    "ARC",
+    # Fix #1: Lmod / module-system vars not caught by _is_module_system_var prefix check
+    "MODULESHOME", "MODULEPATH_ROOT",
+    "BASH_ENV",             # points to lmod init script — not wanted in container
 }
 
 def _is_blocked_env(key: str) -> bool:
@@ -91,6 +103,9 @@ def _is_blocked_env(key: str) -> bool:
         return True
     # Shell functions exported as env vars (bash exports them as BASH_FUNC_name%%)
     if "%%" in key or key.startswith("BASH_FUNC_"):
+        return True
+    # Fix #1: catch all SGE_ prefixed vars (SGE_ROOT, SGE_CELL, SGE_O_*, etc.)
+    if key.startswith("SGE_"):
         return True
     return False
 
@@ -115,6 +130,9 @@ def _is_module_system_var(key: str) -> bool:
         return True
     # _ModuleTable001_, _ModuleTable002_, … Lmod state blobs
     if re.match(r'^_ModuleTable\w+_$', key):
+        return True
+    # Fix #1: remaining module-system vars not covered by prefix checks
+    if key in {"MODULESHOME", "MODULEPATH_ROOT", "BASH_ENV"}:
         return True
     return False
 
@@ -163,6 +181,10 @@ def parse_qsub(script_text: str) -> dict:
         elif re.match(r'^module\s+load\b', stripped):
             module_loads.append(stripped)
         elif stripped and not stripped.startswith("#"):
+            # Fix #4: skip defcon-injected env capture lines so they don't
+            # leak into the %runscript
+            if re.match(r'^env\s+-0\s+>', stripped):
+                continue
             commands.append(stripped)
 
     scheduler = "slurm" if any("#SBATCH" in d for d in directives) else "sge"
@@ -282,9 +304,14 @@ def stage2(args):
     if not env_path.exists():
         sys.exit(f"Error: env file not found: {env_path}")
 
+    # Fix #2: exclude the defcon working directory from %files so it doesn't
+    # get bundled wholesale into the container just because strace saw it.
+    workdir = str(output_path.resolve().parent)
+    exclude = (workdir,)
+
     # Parse strace
     print("  Parsing strace output…")
-    files = parse_strace_file(trace_path)
+    files = parse_strace_file(trace_path, exclude_paths=exclude)
     modules = summarize_modules(trace_path)
     blocked_libs = parse_blocked_module_libs(trace_path)
 
