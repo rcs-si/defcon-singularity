@@ -35,6 +35,7 @@ MODULE_BLOCKLIST = {
     "openmpi",
     "mvapich2",
     "cuda",
+    "miniconda",
 }
 
 # Error patterns — used only when filtering non-module paths
