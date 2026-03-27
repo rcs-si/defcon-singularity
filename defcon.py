@@ -109,6 +109,32 @@ def load_env_vars(path: Path) -> dict:
     return env_vars
 
 
+def _is_module_system_var(key: str) -> bool:
+    """Return True for Lmod/module-system internals that should never go in the .def."""
+    if key.startswith("LMOD") or key.startswith("MODULEPATH"):
+        return True
+    # _ModuleTable001_, _ModuleTable002_, … Lmod state blobs
+    if re.match(r'^_ModuleTable\w+_$', key):
+        return True
+    return False
+
+
+def diff_env_vars(pre_env: dict, post_env: dict) -> dict:
+    """
+    Return variables that are new or changed in post_env relative to pre_env,
+    skipping Lmod/module-system internals.
+    These are the vars set (or modified) by 'module load' calls and belong in
+    the .def %environment section.
+    """
+    diff = {}
+    for key, value in post_env.items():
+        if _is_module_system_var(key):
+            continue
+        if key not in pre_env or pre_env[key] != value:
+            diff[key] = value
+    return diff
+
+
 def parse_qsub(script_text: str) -> dict:
     """
     Split a qsub/sbatch script into:
@@ -216,6 +242,7 @@ def stage1(args):
             f'python3 {defcon_exe} stage2'
             f' -t {trace_file}'
             f' -e {env_file}'
+            f' --env-post $TMPDIR/defcon_env_post.out'
             f' --command-file {run_script_path}'
             f' -o {def_out}'
         ),
@@ -271,7 +298,17 @@ def stage2(args):
 
     # Parse environment
     print("  Loading environment variables…")
-    env_vars = load_env_vars(env_path)
+    pre_env = load_env_vars(env_path)
+
+    env_post_path = Path(args.env_post) if args.env_post else None
+    if env_post_path:
+        if not env_post_path.exists():
+            sys.exit(f"Error: post-job env file not found: {env_post_path}")
+        post_env = load_env_vars(env_post_path)
+        env_vars = diff_env_vars(pre_env, post_env)
+        print(f"  Found {len(env_vars)} new/changed variable(s) from module loads.")
+    else:
+        env_vars = pre_env
 
     # Build .def sections
     # Project files + individual .so files from support modules -> %files
@@ -293,30 +330,28 @@ def stage2(args):
         rsync_lines.append(f"    rsync -rL {root}/ {container_dest}/")
     rsync_section = "\n".join(rsync_lines)
 
-    # Derive bin/ and lib64/ paths from each module install root and prepend
-    # them to PATH / LD_LIBRARY_PATH so 'module load' is NOT needed at runtime.
-    module_bins = []
-    module_libs = []
-    for f in files:
-        fp = Path(f)
-        if not f.startswith("/share/pkg"):
-            continue
-        module_bins.append(str(fp / "bin"))
-        module_libs.append(str(fp / "lib64"))
-        module_libs.append(str(fp / "lib"))
+    if not env_post_path:
+        # Fallback: reconstruct PATH / LD_LIBRARY_PATH from strace-detected module roots.
+        # Superseded when --env-post is available (the diff already has correct values).
+        module_bins = []
+        module_libs = []
+        for f in files:
+            fp = Path(f)
+            if not f.startswith("/share/pkg"):
+                continue
+            module_bins.append(str(fp / "bin"))
+            module_libs.append(str(fp / "lib64"))
+            module_libs.append(str(fp / "lib"))
 
-    # PATH: module bins first, then /usr/local/bin, then the rest from env
-    existing_path = env_vars.get("PATH", "/usr/bin:/bin")
-    base_path_parts = [p for p in existing_path.split(":") if p not in module_bins]
-    env_vars["PATH"] = ":".join(module_bins + ["/usr/local/bin"] + base_path_parts)
+        existing_path = env_vars.get("PATH", "/usr/bin:/bin")
+        base_path_parts = [p for p in existing_path.split(":") if p not in module_bins]
+        env_vars["PATH"] = ":".join(module_bins + ["/usr/local/bin"] + base_path_parts)
 
-    # LD_LIBRARY_PATH: module lib dirs + unique dirs from blocked .so files
-    existing_ldpath = env_vars.get("LD_LIBRARY_PATH", "")
-    base_ld_parts = [p for p in existing_ldpath.split(":") if p and p not in module_libs]
-    # Add unique parent directories of blocked libs (e.g. gcc lib64, mkl lib)
-    blocked_lib_dirs = sorted({str(Path(lib).parent) for lib in blocked_libs})
-    all_lib_dirs = module_libs + [d for d in blocked_lib_dirs if d not in module_libs]
-    env_vars["LD_LIBRARY_PATH"] = ":".join(all_lib_dirs + base_ld_parts)
+        existing_ldpath = env_vars.get("LD_LIBRARY_PATH", "")
+        base_ld_parts = [p for p in existing_ldpath.split(":") if p and p not in module_libs]
+        blocked_lib_dirs = sorted({str(Path(lib).parent) for lib in blocked_libs})
+        all_lib_dirs = module_libs + [d for d in blocked_lib_dirs if d not in module_libs]
+        env_vars["LD_LIBRARY_PATH"] = ":".join(all_lib_dirs + base_ld_parts)
 
     env_section = "\n".join(
         f"    export {k}={_shell_quote(v)}" for k, v in sorted(env_vars.items())
@@ -398,10 +433,12 @@ def main():
         "stage2",
         help="Parse strace output and generate Singularity .def  [DEFCON 2->1]",
     )
-    p2.add_argument("-t", "--trace",   required=True, metavar="TRACE.OUT",
+    p2.add_argument("-t", "--trace",    required=True, metavar="TRACE.OUT",
                     help="strace output file")
-    p2.add_argument("-e", "--env",     required=True, metavar="ENV.OUT",
-                    help="env -0 dump file")
+    p2.add_argument("-e", "--env",      required=True, metavar="ENV.OUT",
+                    help="env -0 dump captured before the job (pre-module)")
+    p2.add_argument("--env-post",       metavar="ENV_POST.OUT",
+                    help="env -0 dump captured after the job; diff with --env gives module-set vars")
     p2.add_argument("-c", "--command", metavar="'CMD'",
                     help="Command to embed in %%runscript (legacy; use --command-file)")
     p2.add_argument("--command-file", metavar="JOB.RUN.SH",
