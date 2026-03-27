@@ -7,7 +7,7 @@ Analyses a job's runtime dependencies via strace and produces a Singularity
 
 Stages count DOWN to DEFCON 1 (package ready), like the real threat-level scale.
 
-  Stage 1 (DEFCON 2):
+  Stage 1 (DEFCON 3 -> 2):
     defcon stage1 -i input.qsub -o output.qsub [--scheduler sge|slurm]
 
     Reads your job script, wraps it with strace instrumentation, and writes a
@@ -18,7 +18,7 @@ Stages count DOWN to DEFCON 1 (package ready), like the real threat-level scale.
 
     Then just:  qsub output.qsub   (or sbatch)
 
-  Stage 2 (DEFCON 1):
+  Stage 2 (DEFCON 2 -> 1):
     defcon stage2 -t trace.out -e env.out --command-file job.run.sh -o container.def
 
     Parses the strace + env files and writes a Singularity definition.
@@ -62,10 +62,6 @@ From: /projectnb/rcs-intern/brian/alma8_singularity/images/scc-alma8.simg
 %setup
     # rsync -rL dereferences cyclic symlinks that break %%files cp -r
 {rsync_section}
-
-%post
-    yum -y update
-    yum -y install python3 python3-pip
 
 %environment
 {env_section}
@@ -189,7 +185,11 @@ def stage1(args):
     ] + parsed["module_loads"] + [
         "",
         "# --- Original commands ---",
-    ] + parsed["commands"]
+    ] + parsed["commands"] + [
+        "",
+        "# Capture environment after job completes",
+        "env -0 > $TMPDIR/defcon_env_post.out",
+    ]
 
     run_script_path.write_text("\n".join(run_script_lines) + "\n")
     run_script_path.chmod(0o755)
