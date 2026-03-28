@@ -107,6 +107,10 @@ def _is_blocked_env(key: str) -> bool:
     # Fix #1: catch all SGE_ prefixed vars (SGE_ROOT, SGE_CELL, SGE_O_*, etc.)
     if key.startswith("SGE_"):
         return True
+    # Fix #2: catch all Lmod/module-system vars here too so they're blocked
+    # in load_env_vars (not just in the diff path via _is_module_system_var)
+    if key.startswith("LMOD") or key.startswith("MODULEPATH"):
+        return True
     return False
 
 
@@ -140,13 +144,13 @@ def _is_module_system_var(key: str) -> bool:
 def diff_env_vars(pre_env: dict, post_env: dict) -> dict:
     """
     Return variables that are new or changed in post_env relative to pre_env,
-    skipping Lmod/module-system internals.
-    These are the vars set (or modified) by 'module load' calls and belong in
-    the .def %environment section.
+    skipping Lmod/module-system internals and session-specific noise.
+    These are the vars set (or modified) by 'module load' / conda activate and
+    belong in the .def %environment section.
     """
     diff = {}
     for key, value in post_env.items():
-        if _is_module_system_var(key):
+        if _is_module_system_var(key) or _is_blocked_env(key):
             continue
         if key not in pre_env or pre_env[key] != value:
             diff[key] = value
@@ -181,8 +185,7 @@ def parse_qsub(script_text: str) -> dict:
         elif re.match(r'^module\s+load\b', stripped):
             module_loads.append(stripped)
         elif stripped and not stripped.startswith("#"):
-            # Fix #4: skip defcon-injected env capture lines so they don't
-            # leak into the %runscript
+            # Skip only defcon-injected env capture line, not user commands
             if re.match(r'^env\s+-0\s+>', stripped):
                 continue
             commands.append(stripped)
@@ -235,7 +238,7 @@ def stage1(args):
         "# --- Original commands ---",
     ] + parsed["commands"] + [
         "",
-        "# Capture environment after job completes",
+        "# Capture environment after job completes (conda activate already ran above)",
         "env -0 > $TMPDIR/defcon_env_post.out",
     ]
 
@@ -304,12 +307,66 @@ def stage2(args):
     if not env_path.exists():
         sys.exit(f"Error: env file not found: {env_path}")
 
-    # Fix #2: exclude the defcon working directory from %files so it doesn't
-    # get bundled wholesale into the container just because strace saw it.
-    workdir = str(output_path.resolve().parent)
-    exclude = (workdir,)
+    # Fix #2: exclude the defcon working directory AND all its ancestors that
+    # fall under an INTERESTING_PREFIX, but stop before the prefix root itself
+    # (e.g. exclude /projectnb/rcs-intern/reetom but NOT /projectnb, so that
+    # other projectnb paths like the conda env are still captured).
+    from strace_parser import INTERESTING_PREFIXES as _INTERESTING
+    workdir_path = output_path.resolve().parent
+    exclude_set = set()
+    p = workdir_path
+    while True:
+        s = str(p)
+        # Stop once we've reached the bare interesting prefix itself
+        if s in _INTERESTING:
+            break
+        if not any(s.startswith(prefix + "/") for prefix in _INTERESTING):
+            break
+        exclude_set.add(s)
+        parent = p.parent
+        if parent == p:
+            break
+        p = parent
+    exclude = tuple(exclude_set)
 
-    # Parse strace
+    # ── Load environment files early so we can detect conda paths ──
+    print("  Loading environment variables…")
+    pre_env = load_env_vars(env_path)
+
+    env_post_path = Path(args.env_post) if args.env_post else None
+    if env_post_path:
+        if not env_post_path.exists():
+            print(f"  WARNING: post-job env file not found: {env_post_path}")
+            print("  Falling back to pre-job environment (module vars may be incomplete).")
+            post_env = pre_env
+            env_vars = pre_env
+        else:
+            post_env = load_env_vars(env_post_path)
+            env_vars = diff_env_vars(pre_env, post_env)
+            print(f"  Found {len(env_vars)} new/changed variable(s) from module loads.")
+            if not env_vars:
+                print("  WARNING: env diff is empty — falling back to pre-job environment.")
+                env_vars = pre_env
+    else:
+        post_env = pre_env
+        env_vars = pre_env
+
+    # Auto-detect conda environment paths so they don't flood %files.
+    # Conda envs are huge; they should be bind-mounted at runtime, not copied in.
+    active_env = post_env if post_env is not pre_env else pre_env
+    conda_paths: list = []
+    for key in ("CONDA_PREFIX", "CONDA_DEFAULT_ENV"):
+        val = active_env.get(key, "")
+        if val and val.startswith("/") and val not in conda_paths:
+            conda_paths.append(val)
+    if conda_paths:
+        print("  Detected conda env(s) — excluding from %%files (bind-mount at runtime):")
+        for cp in conda_paths:
+            print(f"    {cp}")
+        print(f"  Hint: singularity run --bind {conda_paths[0]} test_python.sif")
+    exclude = tuple(set(exclude) | set(conda_paths))
+
+    # ── Parse strace ──
     print("  Parsing strace output…")
     files = parse_strace_file(trace_path, exclude_paths=exclude)
     modules = summarize_modules(trace_path)
@@ -322,20 +379,6 @@ def stage2(args):
         print(f"  Found {len(blocked_libs)} runtime lib(s) from support modules (gcc/intel/flexiblas):")
         for lib in blocked_libs:
             print(f"    {lib}")
-
-    # Parse environment
-    print("  Loading environment variables…")
-    pre_env = load_env_vars(env_path)
-
-    env_post_path = Path(args.env_post) if args.env_post else None
-    if env_post_path:
-        if not env_post_path.exists():
-            sys.exit(f"Error: post-job env file not found: {env_post_path}")
-        post_env = load_env_vars(env_post_path)
-        env_vars = diff_env_vars(pre_env, post_env)
-        print(f"  Found {len(env_vars)} new/changed variable(s) from module loads.")
-    else:
-        env_vars = pre_env
 
     # Build .def sections
     # Project files + individual .so files from support modules -> %files
