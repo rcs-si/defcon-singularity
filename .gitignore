@@ -180,3 +180,4 @@ test/**/.*
 
 # still ignore large binaries
 test/**/*.sif
+.DS_Store
