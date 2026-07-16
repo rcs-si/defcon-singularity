@@ -3,16 +3,15 @@
 `defcon` analyses a job's runtime file dependencies via `strace` and produces a
 Singularity `.def` file that reproduces the environment inside a container.
 
-Stages count down to DEFCON 1 (container ready), like the real threat-level scale.
-
 ## Quickstart
 
 You need to provide an input job script - `defcon` needs it to know which modules
 to load, what command to run, and what scheduler directives to use (cores, time
-limits, etc.). A minimal example:
+limits, etc.). A minimal example (using the SGE scheduler):
 
 ```bash
 #!/bin/bash -l
+## This is file "my_job.qsub"
 #$ -pe omp 4
 #$ -l h_rt=1:00:00
 
@@ -26,17 +25,20 @@ Then run the pipeline:
 # Stage 1: instrument your job script
 python3 defcon.py stage1 -i my_job.qsub -o my_job_defcon.qsub
 
-# Submit the instrumented job - it auto-calls stage2 when done
+# Submit the instrumented job - it auto-calls Stage 2 when done
 qsub my_job_defcon.qsub
 
-# DEFCON 1: container.def is ready
+# Stage 2: the container.def is ready
+# build the container
 singularity build --fakeroot container.sif my_job_defcon.def
-singularity run container.sif
+# the container can now execute the original job script,
+# so long as the hardware resources are available
+singularity exec container.sif  ./my_job.qsub
 ```
 
 ## How it works
 
-Stage 1 (DEFCON 3 to 2):
+Stage 1:
 ```bash
 python3 defcon.py stage1 -i input.qsub -o output.qsub
 ```
@@ -101,8 +103,8 @@ Expected artifacts after successful runs include:
 ```text
 -t / --trace     strace output file
 -e / --env       env -0 dump file
---command-file   Script file to extract run commands from (recommended)
--c / --command   Command to embed in %runscript (legacy fallback)
+-c / --command   Command to embed in %runscript (optional)
+--command-file   Script file to extract %runscript commands from (optional)
 -o / --output    Output Singularity definition file
 ```
 
