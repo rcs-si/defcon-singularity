@@ -54,9 +54,9 @@ BANNER = r"""
 """
 
 DEFCON_STATUS = {
-    3: "⚠️  DEFCON 3  — Instrumented job ready. Submit it to proceed.",
-    2: "🔶 DEFCON 2  — Job complete. Parsing dependencies…",
-    1: "✅ DEFCON 1  — Container definition ready. You are go for launch.",
+    3: "⚠️ — Instrumented job ready. Submit it to proceed.",
+    2: "🔶 — Job complete. Parsing dependencies…",
+    1: "✅ — Container definition ready.",
 }
 
 
@@ -72,9 +72,17 @@ From: {singularity_image}
 {rsync_section}
 
 %post
-    yum -y update
-    yum -y install python3 python3-pip
-
+    # This disables the module command, as all of the variables
+    # set by Lmod are captured in the environment section. 
+    # This way the original job script (with "module load" commands)
+    # can run without modification.
+    cat > /usr/local/bin/module << 'EOF'
+#!/bin/sh
+exit 0
+EOF
+    chmod +x /usr/local/bin/module
+    
+    
 %environment
 {env_section}
 
@@ -82,7 +90,7 @@ From: {singularity_image}
     exec /bin/bash "$@"
 """
 
-
+# Environment variables that don't get brought into the .def file
 _ENV_BLOCKLIST = {
     "PWD", "OLDPWD", "SHLVL", "_", "LS_COLORS",
     "SSH_CLIENT", "SSH_CONNECTION", "SSH_TTY", "SSH_AUTH_SOCK",
@@ -90,7 +98,7 @@ _ENV_BLOCKLIST = {
     "DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR", "XDG_SESSION_ID",
     "HOSTNAME", "HISTCONTROL", "HISTSIZE", "HISTFILE",
     "LESSOPEN", "LESSCLOSE", "MAIL", "LOGNAME",
-    "S_COLORS", "which_declare",
+    "S_COLORS", "which_declare", "USER", "DISPLAY",
     "SINGULARITY_CACHEDIR", "SINGULARITY_BIND", "SINGULARITYENV_PREPEND_PATH",
 }
 
@@ -165,14 +173,17 @@ def _shell_quote(value: str) -> str:
 
 
 def _shlex_join(parts: Sequence[str]) -> str:
-    return " ".join(shlex.quote(str(part)) for part in parts)
+    #return " ".join(shlex.quote(str(part)) for part in parts)
+    # actually we don't want to shlex.quote() because we want the command
+    # line in the shell to result ${TMPDIR}
+    return " ".join(str(part) for part in parts)
 
 
 def load_env_vars(path: Path) -> dict:
     env_vars = {}
     raw = path.read_bytes()
     for entry in raw.split(b"\x00"):
-        if b" in entry:
+        if b"=" in entry:
             key, value = entry.split(b"=", 1)
             k = key.decode(errors="replace")
             v = value.decode(errors="replace")
@@ -228,8 +239,8 @@ def stage1(args):
 
     scheduler = args.scheduler or parsed["scheduler"]
 
-    trace_file = "$TMPDIR/defcon_trace.out"
-    env_file = "$TMPDIR/defcon_env.out"
+    trace_file = "${TMPDIR}/defcon_trace.out"
+    env_file = "${TMPDIR}/defcon_env.out"
 
     run_script_path = output_path.with_suffix(".run.sh")
     purge_lines = (

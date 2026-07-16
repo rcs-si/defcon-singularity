@@ -132,6 +132,10 @@ def parse_strace_file(strace_path: Path) -> List[str]:
             for other in sorted_others
             if other != path
         )
+        # Special Python case: skip if it contains "__pycache__"
+        # as there's no need to include those.
+        if path.find("__pycache__") >= 0:
+            continue 
         if not is_parent:
             pruned.add(path)
 
