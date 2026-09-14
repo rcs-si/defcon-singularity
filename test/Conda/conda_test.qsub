@@ -1,0 +1,12 @@
+#!/bin/bash -l
+#$ -pe omp 1
+#$ -l h_rt=00:10:00
+#$ -cwd
+
+set -e
+
+module load miniconda
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate defcon-test
+
+python conda_test.py

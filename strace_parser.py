@@ -47,6 +47,29 @@ ERROR_PATTERNS = (
 )
 
 
+def parse_conda_roots(strace_path: Path) -> List[str]:
+    """Find prefixes by their conda-meta directory on the Stage 2 host.
+
+    Inspect paths before location filters: user environments can live anywhere.
+    Keep lexical paths because Conda scripts embed absolute prefixes.
+    """
+    roots: Set[str] = set()
+    checked = {}
+    with strace_path.open(errors="ignore") as trace:
+        for line in trace:
+            if any(error in line for error in ERROR_PATTERNS):
+                continue
+            for raw_path in PATH_RE.findall(line):
+                path = Path(raw_path)
+                for candidate in (path, *path.parents):
+                    if candidate not in checked:
+                        checked[candidate] = (candidate / "conda-meta").is_dir()
+                    if checked[candidate]:
+                        roots.add(str(candidate))
+                        # Continue: an environment may be inside a Conda base.
+    return sorted(roots)
+
+
 def parse_blocked_module_libs(strace_path: Path) -> List[str]:
     """
     For blocklisted modules (gcc, intel, flexiblas etc.), return the individual

@@ -62,7 +62,49 @@ python3 defcon.py stage2 -t trace.out -e env.out --command-file job.run.sh -o co
 
 ## Tests
 
-Sample test jobs are provided for Python, R, C, and Bash in `test/`.
+Sample test jobs are provided for Python, R, C, Bash, and Conda in `test/`.
+
+To run the Conda smoke test, create its environment once on your cluster and
+submit from the test directory (`-cwd` preserves this working directory):
+
+```bash
+cd test/Conda
+module load miniconda
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda env create -f environment.yml
+qsub conda_test.qsub
+```
+
+The job initializes Conda, activates `defcon-test`, and checks NumPy linear
+algebra and pandas aggregation. To instrument it with DEFCON instead, run
+from the same directory, replacing `/path/to/base.sif` with your base image:
+
+```bash
+python ../../defcon.py stage1 -i conda_test.qsub -o conda_test_defcon.qsub -s /path/to/base.sif
+qsub conda_test_defcon.qsub
+```
+
+Conda support detects `conda-meta` directories above absolute paths accessed in
+the trace. Stage 2 must run on a host where those installations are accessible.
+It copies the detected base installation and environments at their original
+absolute paths, including package metadata and activation hooks. This copies
+whole directories and can make the image large, especially when the base holds
+other environments or a package cache.
+
+The generated environment adds Conda's `condabin` to `PATH` and the detected
+environment parents to `CONDA_ENVS_PATH`, so the job can activate an environment
+by name without relying on the host's `.condarc`. The job must explicitly
+initialize Conda, as in `conda_test.qsub`; activation is replayed inside the
+container. Keep the base image compatible with the cluster's OS and architecture.
+Environments used only by relative paths or inside untraced jobs may require
+additional capture. The working directory and job input files must also be
+available when replaying the job.
+
+Run the local regression tests with:
+
+```bash
+python3 -m unittest discover -s test -p 'test_*.py' -v
+```
 
 Run stage1 locally to generate instrumented scripts:
 
