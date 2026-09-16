@@ -154,6 +154,44 @@ Expected artifacts after successful runs include:
 
 | File | Purpose |
 |------|---------|
-| `defcon.py` | Unified CLI - stage1 and stage2 |
+| `defcon.py` | Compatible executable entry point and legacy stage imports |
+| `cli.py` | Argument parsing, stage orchestration, file I/O, and status output |
+| `job_parser.py` | Scheduler and job metadata extraction |
+| `tracer.py` | Instrumented job wrapper rendering |
+| `dependency_resolver.py` | Dependency selection, overrides, and `DependencyPlan` |
+| `definition_generator.py` | Container environment preparation and definition rendering |
+| `environments/modules.py` | Module installation recognition and runtime search paths |
+| `environments/conda.py` | Conda activation environment preparation |
+| `environments/__init__.py` | Environment dump loading and host-variable filtering |
+| `path_utils.py` | Shared lexical path and override rules |
 | `strace_parser.py` | Parse strace output; extract module paths |
 | `test/` | End-to-end examples and sample outputs |
+
+## Testing and debugging individual stages
+
+The CLI remains `python3 defcon.py stage1 ...` / `stage2 ...`. Keep the Python
+modules and `environments/` directory alongside the entry point when deploying.
+
+Stage 2 exposes an intermediate plan so dependency selection can be inspected
+before generating a definition:
+
+```python
+from pathlib import Path
+from dependency_resolver import resolve_dependencies
+from environments import load_env_vars
+from definition_generator import render_definition
+
+plan = resolve_dependencies(
+    Path("trace.out"), include_paths=["/project/extra"],
+    exclude_paths=["/project/cache"],
+)
+print(plan.copy_roots, plan.project_files, plan.blocked_libs)
+text = render_definition(plan, load_env_vars(Path("env.out")), "base.sif")
+Path("container.def").write_text(text)
+```
+
+`job_parser.parse_qsub()` and `tracer.render_instrumented_job()` can likewise be
+called without submitting a job. Renderers return text; the CLI writes files.
+Environment preparation returns a new mapping, preserving the input snapshot.
+The local tests cover these APIs and the existing Conda integration behavior
+without requiring a scheduler, Conda, strace, or Singularity installation.
