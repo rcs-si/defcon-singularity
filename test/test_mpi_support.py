@@ -38,6 +38,8 @@ class MPISupportTests(unittest.TestCase):
         job = self.root / 'job.sh'
         job.write_text('# mpirun ignored\nmpirun -n 2 ./solver\n')
         self.assertEqual(inspect_mpi(self.trace, command_file=job), (True, []))
+        job.write_text('srun --ntasks=4 xthi\n')
+        self.assertEqual(inspect_mpi(self.trace, command_file=job), (True, []))
         self.assertEqual(inspect_mpi(self.trace, 'on'), (True, []))
 
     def test_copies_complete_mpi_root_and_filters_rank_state(self):

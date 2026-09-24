@@ -8,7 +8,7 @@ from strace_parser import ERROR_PATTERNS, MODULE_INSTALL_RE, PATH_RE
 MPI_MODES = ('auto', 'on', 'none')
 MPI_MODULES = {'openmpi', 'mvapich2', 'mpich', 'intel-mpi', 'impi'}
 MPI_LIBRARY = re.compile(r'^lib(?:mpi|mpich|mpifort|mpi_cxx|mpi_mpifh|pmi|pmix)\.so(?:\.\d+)*$')
-MPI_COMMAND = re.compile(r'(?<![\w-])(?:mpirun|mpiexec)(?![\w-])')
+MPI_COMMAND = re.compile(r'(?<![\w-])(?:mpirun|mpiexec|srun)(?![\w-])')
 
 
 def inspect_mpi(trace_path: Path, mode='auto', command_file=None):
