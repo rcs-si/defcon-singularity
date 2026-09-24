@@ -40,6 +40,8 @@ from pathlib import Path
 from definition_generator import render_definition
 from dependency_resolver import resolve_dependencies
 from environments import load_env_vars
+from environments.gpu import GPU_MODES, render_launcher, runtime_flags
+from environments.mpi import MPI_MODES, render_launcher as render_mpi_launcher
 from job_parser import parse_qsub
 from path_utils import _parse_path_list, _path_is_under_any
 from tracer import render_instrumented_job
@@ -85,6 +87,9 @@ def stage1(args):
     wrapper = render_instrumented_job(
         parsed, run_script_path, def_out, args.singularity_image,
         Path(__file__).with_name("defcon.py").resolve(), args.include, args.exclude,
+        gpu=getattr(args, "gpu", "auto"),
+        mpi=getattr(args, "mpi", "auto"),
+        mpi_root=getattr(args, "mpi_root", None),
     )
     output_path.write_text(wrapper)
     output_path.chmod(0o755)
@@ -131,7 +136,11 @@ def stage2(args):
     exclude_paths = _parse_path_list(args.exclude)
 
     print("  Parsing strace output…")
-    plan = resolve_dependencies(trace_path, include_paths, exclude_paths)
+    plan = resolve_dependencies(
+        trace_path, include_paths, exclude_paths, gpu=getattr(args, "gpu", "auto"),
+        mpi=getattr(args, "mpi", "auto"), command_file=getattr(args, "command_file", None),
+        mpi_root=getattr(args, "mpi_root", None),
+    )
     modules = plan.modules
     blocked_libs = plan.blocked_libs
 
@@ -165,6 +174,17 @@ def stage2(args):
     def_content = render_definition(plan, env_vars, singularity_image)
 
     output_path.write_text(def_content)
+    if plan.gpu_backends or plan.mpi_enabled:
+        launcher = output_path.with_suffix('.run-container.sh')
+        launcher.write_text(render_mpi_launcher(plan.gpu_backends) if plan.mpi_enabled
+                            else render_launcher(plan.gpu_backends))
+        launcher.chmod(0o755)
+        if plan.gpu_backends:
+            print(f"  GPU runtime   : {' '.join(runtime_flags(plan.gpu_backends))}")
+        if plan.mpi_enabled:
+            print(f"  MPI launcher  : {launcher} IMAGE RANKS COMMAND [ARGS...]")
+        else:
+            print(f"  GPU launcher  : {launcher} IMAGE COMMAND [ARGS...]")
 
     print()
     print(f"  Written: {output_path}")
@@ -221,6 +241,13 @@ def build_parser():
     p2.add_argument("-exc", "--exc", dest="exclude", metavar="PATH1,PATH2,...",
                     help="Comma-separated path roots to force exclude")
 
+    for stage_parser in (p1, p2):
+        stage_parser.add_argument('--gpu', choices=GPU_MODES, default='auto',
+                                  help='GPU backend (default: detect from trace); none disables GPU handling')
+        stage_parser.add_argument('--mpi', choices=MPI_MODES, default='auto',
+                                  help='MPI support (default: detect from trace/job); none disables MPI handling')
+        stage_parser.add_argument('--mpi-root', metavar='ABSOLUTE_PATH',
+                                  help='MPI installation prefix to copy and add to runtime paths')
     return parser
 
 

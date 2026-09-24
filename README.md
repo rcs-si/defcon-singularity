@@ -195,3 +195,92 @@ called without submitting a job. Renderers return text; the CLI writes files.
 Environment preparation returns a new mapping, preserving the input snapshot.
 The local tests cover these APIs and the existing Conda integration behavior
 without requiring a scheduler, Conda, strace, or Singularity installation.
+
+## GPU support (NVIDIA CUDA and AMD ROCm)
+
+Both stages accept `--gpu auto|nvidia|amd|none` (default: `auto`). Automatic
+recognition uses successful GPU device, library, or toolkit accesses in the
+trace. Use an explicit backend when detection is inconclusive; `none` retains
+the previous capture behavior without GPU-specific processing.
+
+```bash
+python3 defcon.py stage1 -i gpu_job.qsub -o gpu_capture.qsub -s base.sif --gpu nvidia
+qsub gpu_capture.qsub  # or sbatch for a Slurm job
+singularity build --fakeroot gpu.sif gpu_capture.def
+# Run within a NEW scheduler GPU allocation:
+./gpu_capture.run-container.sh gpu.sif bash gpu_job.qsub
+```
+
+The input job must request GPUs through your site's scheduler directives and
+initialize its GPU framework. Stage 1 preserves those directives and forwards
+the GPU option to stage 2. It does not request GPU resources for you.
+
+When stage 2 identifies a GPU backend, it also writes an executable
+`<definition-stem>.run-container.sh`. This launcher accepts `IMAGE COMMAND [ARGS...]`
+and selects `--nv` for NVIDIA or `--rocm` for AMD. Set
+`DEFCON_CONTAINER_RUNTIME=apptainer` to use Apptainer. You can also run directly:
+
+```bash
+singularity exec --nv gpu.sif bash gpu_job.qsub
+# AMD:
+apptainer exec --rocm gpu.sif bash gpu_job.qsub
+```
+
+GPU support captures recognized CUDA/ROCm toolkit roots (`/usr/local/cuda*`,
+`/opt/rocm*`, and CUDA/ROCm module install roots), plus successfully accessed
+GPU application libraries. Conda environments remain supported. `--inc` and
+`--exc` still control dependency selection. Host driver libraries are omitted
+from selected files and excluded from directory copies; the runtime supplies
+matching host libraries. Generated definitions prioritize `/.singularity.d/libs`
+and do not embed capture-job GPU visibility variables, allowing the current
+allocation's settings to apply. The definition includes GPU runtime metadata
+and help text, but a definition alone cannot enable device passthrough.
+
+The execution node needs supported GPUs and drivers, and a GPU-enabled framework
+compatible with those drivers in the image. This feature does not install
+PyTorch, CUDA, ROCm, or host drivers. Automatic detection is heuristic and does
+not prove successful GPU computation; relative paths and unrecognized/custom
+toolkit layouts may require `--gpu` and `--inc`. Toolkit copies can be large.
+The runtime behavior follows the [Apptainer GPU documentation](https://apptainer.org/docs/user/main/gpu.html).
+
+For a hardware smoke test, run `python test/GPU/gpu_smoke.py` in your allocated
+GPU environment, then run the same command inside the generated container.
+It requires an existing CUDA or ROCm build of PyTorch and verifies an actual
+GPU matrix multiplication. The ordinary unit tests use synthetic traces and a
+fake container runtime, so they run without GPU hardware.
+
+## MPI support
+
+Both stages accept `--mpi auto|on|none` (default: `auto`). Auto mode recognizes
+successful MPI library or launcher accesses in the trace, MPI module installs
+under `/share/pkg.*`, and `mpirun` or `mpiexec` commands in the captured job
+script. Use `--mpi on` when a remote rank is absent from the local trace. Use
+`--mpi-root /absolute/mpi/prefix` when the MPI installation is outside the
+recognized module layout or absent from the trace. Stage 1 passes these options
+to stage 2.
+
+When MPI is detected, stage 2 copies the full traced MPI module installation,
+including its transport plugins, and writes `<definition-stem>.run-container.sh`.
+It leaves captured rank and Slurm variables out of the definition so each rank
+receives values from the current allocation. Build the image and launch the
+application executable directly from within a new scheduler allocation:
+
+```bash
+python3 defcon.py stage1 -i mpi_job.qsub -o mpi_job_defcon.qsub -s base.sif --mpi on
+qsub mpi_job_defcon.qsub
+singularity build --fakeroot mpi_job.sif mpi_job_defcon.def
+./mpi_job_defcon.run-container.sh mpi_job.sif 4 ./solver input.dat
+```
+
+The launcher calls host `mpirun -n 4 singularity exec mpi_job.sif ./solver input.dat`.
+Set `DEFCON_MPI_LAUNCHER=srun` on clusters that use Slurm's `srun`, or
+`DEFCON_CONTAINER_RUNTIME=apptainer` for Apptainer. If GPUs were also detected,
+the same launcher adds `--nv` or `--rocm`. Use the application command in the
+launcher; do not pass a job script that already calls `mpirun`.
+
+The host launcher and the MPI installation inside the image must be compatible
+at your site, and the MPI installation used for capture must be available while
+building the image. Multi-node execution requires the site's
+normal scheduler allocation, networking, and container availability on every
+node. The local tests validate generated commands and definitions; they do not
+run an MPI cluster job.

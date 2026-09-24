@@ -7,13 +7,17 @@ from typing import Sequence
 
 def _shlex_join(parts: Sequence[str]) -> str:
     # Preserve runtime expansion of ${TMPDIR} in the generated command.
-    return " ".join(str(part) for part in parts)
+    return " ".join(str(part) if str(part).startswith('${TMPDIR}/')
+                    else shlex.quote(str(part)) for part in parts)
 
 
 def render_instrumented_job(
     parsed: dict, run_script_path: Path, def_out: str,
     singularity_image: str, defcon_exe: Path,
     include: str | None = None, exclude: str | None = None,
+    gpu: str = "auto",
+    mpi: str = "auto",
+    mpi_root: str | None = None,
 ) -> str:
     """Render a scheduler wrapper; TMPDIR expands when the job executes."""
     trace_file = "${TMPDIR}/defcon_trace.out"
@@ -28,6 +32,11 @@ def render_instrumented_job(
         "-o", def_out,
         "-s", singularity_image,
     ]
+
+    stage2_cmd.extend(["--gpu", gpu])
+    stage2_cmd.extend(["--mpi", mpi])
+    if mpi_root:
+        stage2_cmd.extend(["--mpi-root", mpi_root])
 
     if include:
         stage2_cmd.extend(["--inc", include])
