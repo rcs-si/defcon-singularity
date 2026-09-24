@@ -37,6 +37,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from config import DEFAULT_BASE_IMAGE
 from definition_generator import render_definition
 from dependency_resolver import resolve_dependencies
 from environments import load_env_vars
@@ -213,8 +214,9 @@ def build_parser():
                     help="Output instrumented job script")
     p1.add_argument("--def-out", metavar="CONTAINER.DEF",
                     help="Path where stage2 should write the .def")
-    p1.add_argument("-s", "--singularity-image", required=True, metavar="BASE.SIF",
-                    help="Singularity base image to use")
+    p1.add_argument("-s", "--singularity-image", default=DEFAULT_BASE_IMAGE,
+                    metavar="BASE.SIF",
+                    help=f"Singularity base image (default: {DEFAULT_BASE_IMAGE})")
     p1.add_argument("--scheduler", choices=["sge", "slurm"],
                     help="Override scheduler detection")
     p1.add_argument("-inc", "--inc", dest="include", metavar="PATH1,PATH2,...",
@@ -234,8 +236,9 @@ def build_parser():
                     help="Generated run script path; retained for compatibility")
     p2.add_argument("-o", "--output", required=True, metavar="CONTAINER.DEF",
                     help="Output Singularity definition file")
-    p2.add_argument("-s", "--singularity-image", required=True, metavar="BASE.SIF",
-                    help="Singularity base image to use")
+    p2.add_argument("-s", "--singularity-image", default=DEFAULT_BASE_IMAGE,
+                    metavar="BASE.SIF",
+                    help=f"Singularity base image (default: {DEFAULT_BASE_IMAGE})")
     p2.add_argument("-inc", "--inc", dest="include", metavar="PATH1,PATH2,...",
                     help="Comma-separated paths to force include")
     p2.add_argument("-exc", "--exc", dest="exclude", metavar="PATH1,PATH2,...",

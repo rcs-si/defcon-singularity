@@ -140,6 +140,10 @@ Expected artifacts after successful runs include:
 --scheduler      sge | slurm  (auto-detected from directives)
 ```
 
+Both stages use the site base image configured as `DEFAULT_BASE_IMAGE` in
+`config.py` when `-s/--singularity-image` is omitted. Pass `-s BASE.SIF` to
+override it for one invocation.
+
 ### stage2
 
 ```text
