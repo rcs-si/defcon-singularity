@@ -9,6 +9,15 @@ MPI_MODES = ('auto', 'on', 'none')
 MPI_MODULES = {'openmpi', 'mvapich2', 'mpich', 'intel-mpi', 'impi'}
 MPI_LIBRARY = re.compile(r'^lib(?:mpi|mpich|mpifort|mpi_cxx|mpi_mpifh|pmi|pmix)\.so(?:\.\d+)*$')
 MPI_COMMAND = re.compile(r'(?<![\w-])(?:mpirun|mpiexec|srun)(?![\w-])')
+_OPENMPI_SESSION_COMPONENT = re.compile(r'^ompi\.[^/]+\.\d+$')
+_NFS_TEMP_FILE = re.compile(r'^\.nfs[0-9a-f]+$', re.IGNORECASE)
+
+
+def is_runtime_path(path):
+    """Identify transient MPI/NFS files that cannot be packaged reliably."""
+    parts = Path(path).parts
+    return (any(_OPENMPI_SESSION_COMPONENT.match(part) for part in parts)
+            or _NFS_TEMP_FILE.match(Path(path).name) is not None)
 
 
 def inspect_mpi(trace_path: Path, mode='auto', command_file=None):

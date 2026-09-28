@@ -12,7 +12,7 @@ import unittest
 from cli import main
 from dependency_resolver import resolve_dependencies
 from definition_generator import render_definition
-from environments.mpi import inspect_mpi
+from environments.mpi import inspect_mpi, is_runtime_path
 from job_parser import parse_qsub
 from tracer import render_instrumented_job
 
@@ -41,6 +41,18 @@ class MPISupportTests(unittest.TestCase):
         job.write_text('srun --ntasks=4 xthi\n')
         self.assertEqual(inspect_mpi(self.trace, command_file=job), (True, []))
         self.assertEqual(inspect_mpi(self.trace, 'on'), (True, []))
+
+    def test_ignores_openmpi_session_and_nfs_temporary_files(self):
+        session = str(self.root / 'ompi.node.123/pid.456/0/.nfs000000abc123')
+        self.trace.write_text(
+            f'openat(0, "/usr/lib64/libmpi.so.40", 0) = 3\n'
+            f'openat(0, "{session}", 0) = 3\n'
+        )
+        self.assertTrue(is_runtime_path(session))
+        self.assertTrue(is_runtime_path('/project/job/.nfs0123abcd'))
+        self.assertFalse(is_runtime_path('/project/job/input.dat'))
+        self.assertNotIn(session, resolve_dependencies(
+            self.trace, include_paths=[session], mpi='on').project_files)
 
     def test_copies_complete_mpi_root_and_filters_rank_state(self):
         root = '/share/pkg.8/openmpi/4.1/install'
