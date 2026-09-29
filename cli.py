@@ -57,9 +57,9 @@ BANNER = r"""
 """
 
 DEFCON_STATUS = {
-    3: "⚠️ — Instrumented job ready. Submit it to proceed.",
-    2: "🔶 — Job complete. Parsing dependencies…",
-    1: "✅ — Container definition ready.",
+    3: "— Instrumented job ready. Submit it to proceed.",
+    2: "— Job complete. Parsing dependencies…",
+    1: "— Container definition ready.",
 }
 
 
