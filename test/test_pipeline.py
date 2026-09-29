@@ -10,6 +10,7 @@ import tempfile
 import unittest
 
 from cli import build_parser, main
+from config import DEFAULT_BASE_IMAGE
 from definition_generator import prepare_environment, render_definition
 from dependency_resolver import DependencyPlan, resolve_dependencies
 from environments import load_env_vars
@@ -67,7 +68,10 @@ class PipelineTests(unittest.TestCase):
 
     def test_environment_dump_filters_host_state_and_preserves_equals(self):
         env = self.root / 'env'
-        env.write_bytes(b'PWD=/host\0BASH_FUNC_module%%=function\0VALUE=a=b\0INVALID\0')
+        env.write_bytes(
+            b'PWD=/host\0TMPDIR=/allocation/tmp\0OMP_NUM_THREADS=1\0'
+            b'OMP_PROC_BIND=spread\0BASH_FUNC_module%%=function\0VALUE=a=b\0INVALID\0'
+        )
         self.assertEqual(load_env_vars(env), {'VALUE': 'a=b'})
 
     def test_module_paths_do_not_add_conda_libraries(self):
@@ -122,6 +126,15 @@ class PipelineTests(unittest.TestCase):
     def test_cli_accepts_legacy_options(self):
         args = build_parser().parse_args(['stage2', '-t', 'trace', '-e', 'env', '-s', 'base.sif', '-o', 'out.def', '--command-file', 'run.sh', '-inc', '/extra', '-exc', '/skip'])
         self.assertEqual((args.include, args.exclude, args.command_file), ('/extra', '/skip', 'run.sh'))
+
+    def test_cli_uses_configured_default_base_image(self):
+        parser = build_parser()
+        stage1 = parser.parse_args(['stage1', '-i', 'job.qsub'])
+        stage2 = parser.parse_args(['stage2', '-t', 'trace', '-e', 'env', '-o', 'out.def'])
+        self.assertEqual(stage1.singularity_image, DEFAULT_BASE_IMAGE)
+        self.assertEqual(stage2.singularity_image, DEFAULT_BASE_IMAGE)
+        override = parser.parse_args(['stage1', '-i', 'job.qsub', '-s', 'custom.sif'])
+        self.assertEqual(override.singularity_image, 'custom.sif')
 
     def test_script_entrypoint_runs_stage2(self):
         trace, env, output = [self.root / name for name in ('trace', 'env', 'out.def')]

@@ -6,7 +6,7 @@ from typing import List, Sequence
 
 from environments.gpu import application_libraries, inspect_trace, is_host_driver
 from environments.modules import _is_module_install_root
-from environments.mpi import inspect_mpi
+from environments.mpi import inspect_mpi, is_runtime_path as is_mpi_runtime_path
 from path_utils import _apply_path_overrides, _path_is_under, _path_is_under_any
 from strace_parser import (
     parse_strace_file, parse_conda_roots, parse_blocked_module_libs,
@@ -54,6 +54,8 @@ def resolve_dependencies(
     files = _apply_path_overrides(
         parse_strace_file(trace_path) + conda_roots + gpu_roots + mpi_roots, include_paths, exclude_paths,
     )
+    if mpi_enabled:
+        files = [path for path in files if not is_mpi_runtime_path(path)]
     gpu_libs = application_libraries(trace_path) if gpu_backends else []
     blocked_libs = _apply_path_overrides(
         parse_blocked_module_libs(trace_path) + gpu_libs, [], exclude_paths,

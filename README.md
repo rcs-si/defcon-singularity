@@ -140,6 +140,10 @@ Expected artifacts after successful runs include:
 --scheduler      sge | slurm  (auto-detected from directives)
 ```
 
+Both stages use the site base image configured as `DEFAULT_BASE_IMAGE` in
+`config.py` when `-s/--singularity-image` is omitted. Pass `-s BASE.SIF` to
+override it for one invocation.
+
 ### stage2
 
 ```text
@@ -253,7 +257,7 @@ fake container runtime, so they run without GPU hardware.
 
 Both stages accept `--mpi auto|on|none` (default: `auto`). Auto mode recognizes
 successful MPI library or launcher accesses in the trace, MPI module installs
-under `/share/pkg.*`, and `mpirun` or `mpiexec` commands in the captured job
+under `/share/pkg.*`, and `mpirun`, `mpiexec`, or `srun` commands in the captured job
 script. Use `--mpi on` when a remote rank is absent from the local trace. Use
 `--mpi-root /absolute/mpi/prefix` when the MPI installation is outside the
 recognized module layout or absent from the trace. Stage 1 passes these options
