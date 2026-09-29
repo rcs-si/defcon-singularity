@@ -68,7 +68,10 @@ class PipelineTests(unittest.TestCase):
 
     def test_environment_dump_filters_host_state_and_preserves_equals(self):
         env = self.root / 'env'
-        env.write_bytes(b'PWD=/host\0TMPDIR=/allocation/tmp\0BASH_FUNC_module%%=function\0VALUE=a=b\0INVALID\0')
+        env.write_bytes(
+            b'PWD=/host\0TMPDIR=/allocation/tmp\0OMP_NUM_THREADS=1\0'
+            b'OMP_PROC_BIND=spread\0BASH_FUNC_module%%=function\0VALUE=a=b\0INVALID\0'
+        )
         self.assertEqual(load_env_vars(env), {'VALUE': 'a=b'})
 
     def test_module_paths_do_not_add_conda_libraries(self):

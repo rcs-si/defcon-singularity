@@ -13,6 +13,9 @@ _ENV_BLOCKLIST = {
     "LESSOPEN", "LESSCLOSE", "MAIL", "LOGNAME",
     "S_COLORS", "which_declare", "USER", "DISPLAY",
     "SINGULARITY_CACHEDIR", "SINGULARITY_BIND", "SINGULARITYENV_PREPEND_PATH",
+    # Thread counts and placement belong to the current scheduler allocation.
+    "OMP_NUM_THREADS", "OMP_THREAD_LIMIT", "OMP_DYNAMIC", "OMP_PROC_BIND",
+    "OMP_PLACES",
 }
 
 
