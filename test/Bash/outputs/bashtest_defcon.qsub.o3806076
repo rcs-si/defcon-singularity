@@ -7,7 +7,7 @@ Shell test start
   ██████╔╝███████╗██║     ╚██████╗╚██████╔╝██║ ╚████║
   ╚═════╝ ╚══════╝╚═╝      ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝
 
-🔶 DEFCON 2  — Job complete. Parsing dependencies…
+DEFCON 2  — Job complete. Parsing dependencies…
 
   Parsing strace output…
   Found 0 module(s):
@@ -15,5 +15,5 @@ Shell test start
 
   Written: bashtest_defcon.def
 
-✅ DEFCON 1  — Container definition ready. You are go for launch.
+DEFCON 1  — Container definition ready. You are go for launch.
 

@@ -15,7 +15,7 @@ All R tests passed.
   ██████╔╝███████╗██║     ╚██████╗╚██████╔╝██║ ╚████║
   ╚═════╝ ╚══════╝╚═╝      ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝
 
-🔶 DEFCON 2  — Job complete. Parsing dependencies…
+DEFCON 2  — Job complete. Parsing dependencies…
 
   Parsing strace output…
   Found 1 module(s):
@@ -31,5 +31,5 @@ All R tests passed.
 
   Written: rtest_defcon.def
 
-✅ DEFCON 1  — Container definition ready. You are go for launch.
+DEFCON 1  — Container definition ready. You are go for launch.
 
