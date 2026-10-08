@@ -12,9 +12,16 @@ IGNORE_PREFIXES = (
 )
 
 # Paths we want to capture for non-module files (only on success)
+# ***NOTE*** These are system dependent, and will surely need to 
+# be adjusted for other HPC systems!
+#### SYSTEM DEPENDENT
 INTERESTING_PREFIXES = (
     "/project",
     "/projectnb",
+    "/rproject",
+    "/rprojectnb",
+    "/restricted/project",
+    "/restricted/projectnb",
     "/usr/local",
 )
 
@@ -122,6 +129,7 @@ def parse_strace_file(strace_path: Path) -> List[str]:
                 m = MODULE_INSTALL_RE.match(path)
                 if m:
                     # Extract module name (e.g. 'gcc' from /share/pkg.8/gcc/12.2.0/install)
+                    #### SYSTEM DEPENDENT
                     module_name = Path(m.group(1)).parts[3]
                     if module_name not in MODULE_BLOCKLIST:
                         module_roots.add(m.group(1))
@@ -129,6 +137,7 @@ def parse_strace_file(strace_path: Path) -> List[str]:
 
                 # Skip /share/pkg sub-paths that didn't match the install regex
                 # (e.g. bare "/share/pkg.8" directory entries — not useful)
+                #### SYSTEM DEPENDENT
                 if path.startswith("/share/pkg"):
                     continue
 
