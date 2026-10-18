@@ -54,7 +54,7 @@ def render_instrumented_job(
         f"env -0 > {env_file}",
         "",
         "# Run original script under strace",
-        f"strace -f -e trace=file -s 4096 -o {trace_file} bash {shlex.quote(str(run_script_path))}",
+        f"strace -f --seccomp-bpf -qq -y -e signal=none -e trace=file -s 4096 -o {trace_file} bash {shlex.quote(str(run_script_path))}",
         "",
         "# Automatically generate Singularity definition (DEFCON 1)",
         _shlex_join(stage2_cmd),

@@ -3,10 +3,10 @@
 from pathlib import Path
 import re
 
+from config import MPI_MODULES
 from strace_parser import ERROR_PATTERNS, MODULE_INSTALL_RE, PATH_RE
 
 MPI_MODES = ('auto', 'on', 'none')
-MPI_MODULES = {'openmpi', 'mvapich2', 'mpich', 'intel-mpi', 'impi'}
 MPI_LIBRARY = re.compile(r'^lib(?:mpi|mpich|mpifort|mpi_cxx|mpi_mpifh|pmi|pmix)\.so(?:\.\d+)*$')
 MPI_COMMAND = re.compile(r'(?<![\w-])(?:mpirun|mpiexec|srun)(?![\w-])')
 _OPENMPI_SESSION_COMPONENT = re.compile(r'^ompi\.[^/]+\.\d+$')
@@ -34,9 +34,9 @@ def inspect_mpi(trace_path: Path, mode='auto', command_file=None):
                 continue
             for path in PATH_RE.findall(line):
                 match = MODULE_INSTALL_RE.match(path)
-                if match and Path(match.group(1)).parts[3].lower() in MPI_MODULES:
+                if match and match.group('name').lower() in MPI_MODULES:
                     detected = True
-                    roots.add(match.group(1))
+                    roots.add(match.group('root'))
                 if MPI_LIBRARY.match(Path(path).name) or Path(path).name in {'mpirun', 'mpiexec'}:
                     detected = True
     if command_file and Path(command_file).is_file():

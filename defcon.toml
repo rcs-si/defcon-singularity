@@ -1,0 +1,28 @@
+# SYSTEM DEPENDENT: edit these settings for your cluster.
+# Loaded beside config.py, regardless of the job's working directory.
+# Override the base image per invocation with -s/--singularity-image.
+DEFAULT_BASE_IMAGE = "/projectnb/rcs-intern/brian/alma8_singularity/images/scc-alma8.simg"
+
+# Non-module paths: ignore noise and capture successful accesses under these roots.
+IGNORE_PREFIXES = ["/proc", "/dev", "/sys", "/tmp", "/run"]
+INTERESTING_PREFIXES = [
+    "/project", "/projectnb", "/rproject", "/rprojectnb",
+    "/restricted/project", "/restricted/projectnb", "/usr/local",
+]
+
+# Collapse module paths to an install root, including failed file probes.
+# Use TOML literal strings for regexes (backslashes need no escaping).
+# Required named groups: root, name (module name), version.
+MODULE_INSTALL_PATTERN = '^(?P<root>/share/pkg\.[^/]+/(?P<name>[^/]+)/(?P<version>[^/]+)/install)(?:/.*)?$'
+# Skip unmatched entries under the module hierarchy, e.g. /share/pkg.8 itself.
+MODULE_PATH_PREFIXES = ["/share/pkg"]
+# Capture individual runtime libraries instead of copying these complete trees.
+MODULE_BLOCKLIST = ["flexiblas", "gcc", "intel", "openmpi", "mvapich2", "cuda"]
+
+# Toolkit locations outside the module hierarchy. Required named group: root.
+NVIDIA_TOOLKIT_PATTERN = '^(?P<root>/usr/local/cuda(?:-[^/]+)?)(?:/|$)'
+AMD_TOOLKIT_PATTERN = '^(?P<root>/opt/rocm(?:-[^/]+)?)(?:/|$)'
+# Module names used to recognize GPU/MPI installations in MODULE_INSTALL_PATTERN.
+NVIDIA_MODULES = ["cuda"]
+AMD_MODULES = ["rocm"]
+MPI_MODULES = ["openmpi", "mvapich2", "mpich", "intel-mpi", "impi"]

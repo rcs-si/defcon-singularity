@@ -43,6 +43,12 @@ class PipelineTests(unittest.TestCase):
         )
         self.assertTrue(wrapper.startswith('#!/bin/bash\n'))
         self.assertIn('#$ -cwd', wrapper)
+        trace_command = shlex.split(next(line for line in wrapper.splitlines() if line.startswith('strace ')))
+        self.assertEqual(trace_command[:11], [
+            'strace', '-f', '--seccomp-bpf', '-qq', '-y', '-e', 'signal=none',
+            '-e', 'trace=file', '-s', '4096',
+        ])
+        self.assertNotIn('-z', trace_command)
         command = shlex.split(wrapper.splitlines()[-1])
         self.assertEqual(command[:3], ['python3', '/tools/defcon.py', 'stage2'])
         self.assertEqual(command[-4:], ['--inc', '/project/extra', '--exc', '/project/cache'])
