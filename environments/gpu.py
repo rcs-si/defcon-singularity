@@ -4,6 +4,10 @@ from pathlib import Path
 import re
 import fnmatch
 
+from config import (
+    AMD_MODULES, AMD_TOOLKIT_RE, MODULE_INSTALL_RE,
+    NVIDIA_MODULES, NVIDIA_TOOLKIT_RE,
+)
 from strace_parser import ERROR_PATTERNS, PATH_RE
 
 GPU_MODES = ('auto', 'nvidia', 'amd', 'none')
@@ -21,10 +25,22 @@ AMD_LIB_PREFIXES = ('librocblas.', 'libhiprtc.', 'libMIOpen.', 'librccl.',
 APPLICATION_LIB_PREFIXES = NVIDIA_LIB_PREFIXES + AMD_LIB_PREFIXES
 DRIVER_PATTERNS = ('libcuda.so*', 'libnvidia-*.so*', 'libamdhip64.so*',
                    'libhsa-runtime64.so*', 'libhsakmt.so*')
-_TOOLKIT = re.compile(
-    r'^(/usr/local/cuda(?:-[^/]+)?|/opt/rocm(?:-[^/]+)?|'
-    r'/share/pkg\.[^/]+/(?:cuda|rocm)/[^/]+/install)(?:/|$)'
-)
+
+
+def _toolkit(path):
+    """Recognize site toolkit locations and the shared module layout."""
+    for backend, pattern in (('nvidia', NVIDIA_TOOLKIT_RE), ('amd', AMD_TOOLKIT_RE)):
+        match = pattern.match(path)
+        if match:
+            return backend, match.group('root')
+    match = MODULE_INSTALL_RE.match(path)
+    if match:
+        name = match.group('name').lower()
+        if name in NVIDIA_MODULES:
+            return 'nvidia', match.group('root')
+        if name in AMD_MODULES:
+            return 'amd', match.group('root')
+    return None, None
 
 
 def is_host_driver(path):
@@ -49,18 +65,18 @@ def inspect_trace(trace_path: Path, mode='auto'):
                 continue
             for path in PATH_RE.findall(line):
                 name = Path(path).name
-                toolkit = _TOOLKIT.match(path)
+                toolkit_backend, toolkit_root = _toolkit(path)
                 backend = None
                 if (path.startswith('/dev/nvidia') or name.startswith(('libcuda.', 'libnvidia-') + NVIDIA_LIB_PREFIXES)
-                        or (toolkit and '/cuda' in toolkit.group(1))):
+                        or toolkit_backend == 'nvidia'):
                     backend = 'nvidia'
                 elif (path == '/dev/kfd' or name.startswith(('libamdhip64.', 'libhsa-runtime64.') + AMD_LIB_PREFIXES)
-                      or (toolkit and '/rocm' in toolkit.group(1))):
+                      or toolkit_backend == 'amd'):
                     backend = 'amd'
                 if backend:
                     detected.add(backend)
-                    if toolkit and (mode == 'auto' or mode == backend):
-                        roots.add(toolkit.group(1))
+                    if toolkit_root and (mode == 'auto' or mode == backend):
+                        roots.add(toolkit_root)
     return sorted(detected) if mode == 'auto' else [mode], sorted(roots)
 
 

@@ -2,40 +2,13 @@ from pathlib import Path
 import re
 from typing import List, Set
 
-# Paths that are never interesting (noise)
-IGNORE_PREFIXES = (
-    "/proc",
-    "/dev",
-    "/sys",
-    "/tmp",
-    "/run",
-)
-
-# Paths we want to capture for non-module files (only on success)
-INTERESTING_PREFIXES = (
-    "/project",
-    "/projectnb",
-    "/usr/local",
+# SYSTEM DEPENDENT settings live in defcon.toml.
+from config import (
+    IGNORE_PREFIXES, INTERESTING_PREFIXES, MODULE_BLOCKLIST,
+    MODULE_INSTALL_RE, MODULE_PATH_PREFIXES,
 )
 
 PATH_RE = re.compile(r'"(/[^"]+)"')
-
-# Collapse /share/pkg.X/PACKAGE/VERSION/install[/...] → install root
-MODULE_INSTALL_RE = re.compile(
-    r'^(/share/pkg\.[^/]+/[^/]+/[^/]+/install)(?:/.*)?$'
-)
-
-# Modules skipped even if strace detects them — low-level runtime libraries
-# (BLAS, compilers, MPI) that either already exist in the base image or contain
-# cyclic symlinks that break rsync/cp during the Singularity build.
-MODULE_BLOCKLIST = {
-    "flexiblas",
-    "gcc",
-    "intel",
-    "openmpi",
-    "mvapich2",
-    "cuda",
-}
 
 # Error patterns — used only when filtering non-module paths
 ERROR_PATTERNS = (
@@ -87,7 +60,7 @@ def parse_blocked_module_libs(strace_path: Path) -> List[str]:
                 m = MODULE_INSTALL_RE.match(path)
                 if not m:
                     continue
-                module_name = Path(m.group(1)).parts[3]
+                module_name = m.group("name")
                 if module_name not in MODULE_BLOCKLIST:
                     continue
                 # Only capture actual .so files, not directories or other files
@@ -103,7 +76,7 @@ def parse_strace_file(strace_path: Path) -> List[str]:
     Singularity %files section.
 
     Strategy:
-    - /share/pkg.*  modules: extract install root from EVERY line, including
+    - Configured module installations: extract install root from EVERY line, including
       failed probes (ENOENT etc.).  The kernel probes many hwcap variants before
       finding the right lib; those probe failures still prove the module is used.
     - All other interesting paths: only keep successfully accessed paths
@@ -118,18 +91,18 @@ def parse_strace_file(strace_path: Path) -> List[str]:
             is_error_line = any(err in line for err in ERROR_PATTERNS)
 
             for path in paths_in_line:
-                # --- /share/pkg module paths ---
+                # --- Configured module paths ---
                 m = MODULE_INSTALL_RE.match(path)
                 if m:
                     # Extract module name (e.g. 'gcc' from /share/pkg.8/gcc/12.2.0/install)
-                    module_name = Path(m.group(1)).parts[3]
+                    module_name = m.group("name")
                     if module_name not in MODULE_BLOCKLIST:
-                        module_roots.add(m.group(1))
+                        module_roots.add(m.group("root"))
                     continue
 
-                # Skip /share/pkg sub-paths that didn't match the install regex
+                # Skip module sub-paths that didn't match the install regex
                 # (e.g. bare "/share/pkg.8" directory entries — not useful)
-                if path.startswith("/share/pkg"):
+                if path.startswith(MODULE_PATH_PREFIXES):
                     continue
 
                 # --- Other interesting paths (only on success) ---
@@ -173,9 +146,8 @@ def summarize_modules(strace_path: Path) -> List[str]:
             for path in PATH_RE.findall(line):
                 m = MODULE_INSTALL_RE.match(path)
                 if m:
-                    parts = Path(m.group(1)).parts
-                    if len(parts) >= 6 and parts[3] not in MODULE_BLOCKLIST:
-                        names.add(f"{parts[3]}/{parts[4]}")
+                    if m.group("name") not in MODULE_BLOCKLIST:
+                        names.add(f"{m.group('name')}/{m.group('version')}")
     return sorted(names)
 
 

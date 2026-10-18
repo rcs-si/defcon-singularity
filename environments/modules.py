@@ -1,15 +1,15 @@
 """Environment module detection and runtime search paths."""
 
 from pathlib import Path
-import re
 
+from config import MODULE_INSTALL_RE
 from path_utils import _clean_path
-
-_MODULE_INSTALL_ROOT_RE = re.compile(r"^/share/pkg\.[^/]+/[^/]+/[^/]+/install$")
 
 
 def _is_module_install_root(path: str) -> bool:
-    return bool(_MODULE_INSTALL_ROOT_RE.match(_clean_path(path)))
+    path = _clean_path(path)
+    match = MODULE_INSTALL_RE.match(path)
+    return bool(match and match.group("root") == path)
 
 
 def runtime_paths(module_roots, conda_roots, blocked_libs):

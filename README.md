@@ -3,6 +3,10 @@
 `defcon` analyses a job's runtime file dependencies via `strace` and produces a
 Singularity `.def` file that reproduces the environment inside a container.
 
+Requires Python 3.10 or newer. On Python 3.10, install the TOML reader with
+`python3 -m pip install -r requirements.txt`; Python 3.11+ uses the standard
+library's [`tomllib`](https://docs.python.org/3/library/tomllib.html).
+
 ## Quickstart
 
 You need to provide an input job script - `defcon` needs it to know which modules
@@ -49,6 +53,19 @@ python3 defcon.py stage1 -i input.qsub -o output.qsub
   1. Captures `env -0` before any module loads
   2. Runs `output.run.sh` under `strace`
   3. Automatically calls `defcon stage2` to emit the `.def`
+
+The generated tracing command is:
+
+```bash
+strace -f --seccomp-bpf -qq -y -e signal=none -e trace=file -s 4096 -o ${TMPDIR}/defcon_trace.out bash output.run.sh
+```
+
+This suppresses signal and process-status messages, adds file descriptor paths,
+and requests kernel syscall filtering to reduce tracing overhead. Failed calls
+are retained: module detection uses failed probes as evidence of dependencies,
+so the wrapper deliberately omits `-z`. `-y` annotates file descriptor paths;
+it does not resolve every symlink argument. See the
+[`strace` manual](https://man7.org/linux/man-pages/man1/strace.1.html).
 
 Stage 2 (DEFCON 2 to 1):
 
@@ -141,8 +158,29 @@ Expected artifacts after successful runs include:
 ```
 
 Both stages use the site base image configured as `DEFAULT_BASE_IMAGE` in
-`config.py` when `-s/--singularity-image` is omitted. Pass `-s BASE.SIF` to
+`defcon.toml` when `-s/--singularity-image` is omitted. Pass `-s BASE.SIF` to
 override it for one invocation.
+
+### Site configuration
+
+Edit `defcon.toml` beside `config.py` to adapt DEFCON to your cluster. Both stages
+load this file from the installation directory, independent of the job's working
+directory. Changes apply on the next invocation, including stage 2 on the compute
+node, so deploy the TOML file alongside the Python files.
+
+The file contains the base image, ignored and interesting path prefixes, module
+layout and hierarchy prefixes, module blocklist, GPU toolkit locations, and
+GPU/MPI module names. For example:
+
+```toml
+INTERESTING_PREFIXES = ["/project", "/projectnb", "/usr/local", "/my/site/data"]
+```
+
+`MODULE_INSTALL_PATTERN` must provide named regex groups `root`, `name`, and
+`version`; all module consumers share it. Update `MODULE_PATH_PREFIXES` alongside
+it to skip unmatched entries in your module hierarchy. Toolkit patterns require
+a `root` group. The loader validates required keys, types, and regex groups at
+startup. Use TOML single-quoted literal strings for regexes to preserve backslashes.
 
 ### stage2
 
@@ -162,6 +200,8 @@ override it for one invocation.
 | `cli.py` | Argument parsing, stage orchestration, file I/O, and status output |
 | `job_parser.py` | Scheduler and job metadata extraction |
 | `tracer.py` | Instrumented job wrapper rendering |
+| `defcon.toml` | System-dependent site settings |
+| `config.py` | TOML loading and validation |
 | `dependency_resolver.py` | Dependency selection, overrides, and `DependencyPlan` |
 | `definition_generator.py` | Container environment preparation and definition rendering |
 | `environments/modules.py` | Module installation recognition and runtime search paths |
@@ -174,7 +214,7 @@ override it for one invocation.
 ## Testing and debugging individual stages
 
 The CLI remains `python3 defcon.py stage1 ...` / `stage2 ...`. Keep the Python
-modules and `environments/` directory alongside the entry point when deploying.
+modules, `defcon.toml`, and `environments/` directory alongside the entry point when deploying.
 
 Stage 2 exposes an intermediate plan so dependency selection can be inspected
 before generating a definition:
