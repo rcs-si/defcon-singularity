@@ -1,0 +1,12 @@
+{
+  "workload": "branch-harness-smoke-test",
+  "blocks": 2,
+  "seed": 42,
+  "timeout": 20,
+  "env": {"OMP_NUM_THREADS": "{threads}"},
+  "oracle": {"field": "result", "atol": 0, "rtol": 0},
+  "modes": {
+    "native": {"argv": ["{python}", "{repo}/evaluation/workloads/branch.py", "--size", "{size}", "--optional", "{optional}"]},
+    "container": {"argv": ["{python}", "{repo}/evaluation/workloads/branch.py", "--size", "{size}", "--optional", "{optional}"]}
+  }
+}

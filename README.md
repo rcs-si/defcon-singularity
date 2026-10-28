@@ -79,6 +79,12 @@ python3 defcon.py stage2 -t trace.out -e env.out --command-file job.run.sh -o co
 
 ## Tests
 
+Research evaluation tools are in [`evaluation/`](evaluation/README.md): dependency
+inventories and multi-trace capture, perturbation designs, numerical/metamorphic
+checks, blocked benchmarks, statistical analysis, and adaptive test selection.
+The directory includes runnable examples and a literature audit; its optional
+analysis dependencies are separate from the production pipeline.
+
 Sample test jobs are provided for Python, R, C, Bash, and Conda in `test/`.
 
 To run the Conda smoke test, create its environment once on your cluster and

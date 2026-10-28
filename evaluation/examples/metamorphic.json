@@ -1,0 +1,12 @@
+{
+  "field": "result",
+  "relation": {"relation": "scale", "scale": 2, "atol": 0, "rtol": 0},
+  "native": {
+    "base": ["{python}", "{repo}/evaluation/workloads/branch.py"],
+    "transformed": ["{python}", "{repo}/evaluation/workloads/branch.py", "--scale", "2"]
+  },
+  "container": {
+    "base": ["{python}", "{repo}/evaluation/workloads/branch.py"],
+    "transformed": ["{python}", "{repo}/evaluation/workloads/branch.py", "--scale", "2"]
+  }
+}

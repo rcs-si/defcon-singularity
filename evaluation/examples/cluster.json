@@ -1,0 +1,14 @@
+{
+  "workload": "branch-single-trace",
+  "blocks": 5,
+  "seed": 42,
+  "timeout": 300,
+  "measure_resources": true,
+  "env": {"OMP_NUM_THREADS": "{threads}"},
+  "oracle": {"field": "result", "atol": 0, "rtol": 0},
+  "modes": {
+    "native": {"argv": ["python3", "{repo}/evaluation/workloads/branch.py", "--size", "{size}", "--optional", "{optional}"]},
+    "traced": {"artifacts": ["{run_dir}/trace.out"], "argv": ["strace", "-f", "-qq", "-y", "-s", "4096", "-e", "trace=file", "-o", "{run_dir}/trace.out", "python3", "{repo}/evaluation/workloads/branch.py", "--size", "{size}", "--optional", "{optional}"]},
+    "container": {"argv": ["apptainer", "exec", "--cleanenv", "--containall", "--no-mount", "hostfs,cwd", "/REPLACE/branch.sif", "python3", "{repo}/evaluation/workloads/branch.py", "--size", "{size}", "--optional", "{optional}"]}
+  }
+}

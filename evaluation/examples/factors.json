@@ -1,0 +1,8 @@
+{
+  "factors": {"size": [4, 16, 64], "optional": ["no", "yes"], "threads": [1, 4]},
+  "strength": 2,
+  "high_risk_groups": [["size", "optional", "threads"]],
+  "forbidden": [],
+  "weights": {"size": [0.6, 0.3, 0.1]},
+  "default_cost_seconds": 1
+}

@@ -1,0 +1,26 @@
+{
+  "base_image": "/REPLACE/base.sif",
+  "runtime": "apptainer",
+  "workload_python": "/usr/bin/python3",
+  "build_flags": ["--fakeroot"],
+  "max_traces": 4,
+  "trace_budget_seconds": 300,
+  "expected_trace_seconds": 1,
+  "validation_draws": 64,
+  "seed": 2401,
+  "validation_seed": 9137,
+  "timeout_seconds": 120,
+  "build_timeout_seconds": 1800,
+  "environment_label": "SCC-cpu-pilot",
+  "discovery_factors": {
+    "size": [2, 16],
+    "algorithm": ["basic", "special"],
+    "feature": ["off", "on"]
+  },
+  "validation_factors": {
+    "size": [7, 32],
+    "algorithm": ["basic", "special"],
+    "feature": ["off", "on"]
+  },
+  "initial_configuration": {"size": 2, "algorithm": "basic", "feature": "off"}
+}

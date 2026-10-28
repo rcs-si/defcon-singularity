@@ -2,27 +2,9 @@ from pathlib import Path
 import re
 from typing import List, Set
 
-# Paths that are never interesting (noise)
-IGNORE_PREFIXES = (
-    "/proc",
-    "/dev",
-    "/sys",
-    "/tmp",
-    "/run",
-)
-
-# Paths we want to capture for non-module files (only on success)
-# ***NOTE*** These are system dependent, and will surely need to 
-# be adjusted for other HPC systems!
-#### SYSTEM DEPENDENT
-INTERESTING_PREFIXES = (
-    "/project",
-    "/projectnb",
-    "/rproject",
-    "/rprojectnb",
-    "/restricted/project",
-    "/restricted/projectnb",
-    "/usr/local",
+from config import (
+    IGNORE_PREFIXES, INTERESTING_PREFIXES, MODULE_INSTALL_RE,
+    MODULE_BLOCKLIST, MODULE_PATH_PREFIXES,
 )
 
 PATH_RE = re.compile(r'"(/[^"]+)"')
@@ -113,7 +95,7 @@ def parse_strace_file(strace_path: Path) -> List[str]:
                 if m:
                     # Extract module name (e.g. 'gcc' from /share/pkg.8/gcc/12.2.0/install)
                     #### SYSTEM DEPENDENT
-                    module_name = Path(m.group(1)).parts[3]
+                    module_name = m.group("name")
                     if module_name not in MODULE_BLOCKLIST:
                         module_roots.add(m.group("root"))
                     continue
@@ -121,7 +103,7 @@ def parse_strace_file(strace_path: Path) -> List[str]:
                 # Skip module sub-paths that didn't match the install regex
                 # (e.g. bare "/share/pkg.8" directory entries — not useful)
                 #### SYSTEM DEPENDENT
-                if path.startswith("/share/pkg"):
+                if path.startswith(MODULE_PATH_PREFIXES):
                     continue
 
                 # --- Other interesting paths (only on success) ---

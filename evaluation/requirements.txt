@@ -1,0 +1,5 @@
+# Optional analysis dependencies; production defcon requirements stay unchanged.
+scipy>=1.10,<2
+pandas>=2,<3
+statsmodels>=0.14,<0.15
+scikit-learn>=1.3,<2
